@@ -1,20 +1,20 @@
 # author: Paul Galatic github.com/pgalatic
 
 import oauth_info
+import installer
 import requests
 import pickle
 import pprint
 import praw
 import os
 
-picture_path = 'C:\\Users\\Essence\\Documents\\Backgrounds' #TODO : Have user set this path
-file_path = 'C:\\Users\\Essence\\Documents\\Python Scripts\\backgrounder' #TODO : Make more general
-
 class Data(object):
-	def __init__(self, dict):
-		self.dict = dict
+	def __init__(self):
+		self.dict = {}
 
 def init():
+	write_praw_ini()
+	
 	reddit = praw.Reddit(client_id=oauth_info.client_id,
 						 client_secret=oauth_info.client_secret,
 						 redirect_uri=oauth_info.redirect_uri,
@@ -22,19 +22,38 @@ def init():
 	reddit.read_only = True
 	return reddit
 
-def read_data():
-	dict = None
-	if (os.path.isfile('data.pkl')):
-		with open('data.pkl', 'rb') as input:
-			dict = pickle.load(input)
-	return dict
+def write_praw_ini():
+	"""
+	The Python-Reddit API Wrapper (PRAW) requires a .ini file in order to run.
+	If that file is not present, the executable will fail. This function writes
+	that file out for the user if it is not present (as I am not tempted to dig
+	into Pyinstaller to figure out why it isn't being included in the exe file
+	in the first place).
 	
-def write_data(dict):
+	You can find out what these INI values mean by looking them up in the PRAW
+	package.
+	"""
+	if not os.path.isfile('praw.ini'):
+		with open('praw.ini', 'w') as out:
+			out.write('[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n')
+			out.write('message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n')
+			out.write('subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n')
+			out.write('reddit_url=https://www.reddit.com\n')
+			out.write('short_url=https://redd.it\n')
+	
+def read_data():
+	if os.path.isfile('data.pkl'):
+		with open('data.pkl', 'rb') as input:
+			dat = pickle.load(input)
+			return dat
+	return None
+	
+def write_data(dat):
 	with open('data.pkl', 'wb') as out:
-		pickle.dump(dict, out, pickle.HIGHEST_PROTOCOL)
+		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 
-def save_image(picture_path, image_url):
-	with open(picture_path, 'wb') as handle:
+def save_image(combined_path, image_url):
+	with open(combined_path, 'wb') as handle:
 		response = requests.get(image_url, stream=True)
 		
 		if not response.ok:
@@ -46,32 +65,49 @@ def save_image(picture_path, image_url):
 			
 			handle.write(block)
 
-def main(reddit):
-	# if read_data is none
-	#	prompt user a la initial installation
-	# else
-	#	picture_path = dict.picture_path
-	#	image_id = dict.image_id + 1
-	#	dict.image_id = image_id
-	
-	r_wallpapers = reddit.subreddit('wallpapers')
-	
-	top_submission = None
-	# grabs top submission
-	for wallpaper in r_wallpapers.top(time_filter='day', limit=1):
-		top_submission = wallpaper
-	
-	permalink = top_submission.permalink
-	image_url = top_submission.url
-	
-	image_id = "/2.png"
-	
-	save_image(picture_path + image_id, image_url)
-	
-	
-	
+def combine_paths(dict):
+	picture_path = dict['picture_path']
+	image_id = dict['image_id']
+	image_ext = "/" + str(image_id) + ".png"
+	while os.path.isfile(picture_path + image_ext):
+		image_id += 1
+		image_ext = "/" + str(image_id) + ".png"
+	dict['image_id'] = image_id
+	return picture_path + image_ext
 
+def top_post_list(subreddit_list):
+	tops = []
+	for subreddit in subreddit_list:
+		# TODO : Maybe change this limit?
+		for submission in subreddit.top(time_filter='day', limit=1):
+			tops.append(submission)
+	return tops	
 
-reddit = init()
+def main():
+	reddit = init()
+	
+	dat = read_data()
+	if dat is None:
+		dict = installer.install()
+		dat = Data()
+		dat.dict = dict
+	else:
+		dict = dat.dict
+	
+	combined_path = combine_paths(dict)
+	
+	subreddits = [] # TODO : import from dict
+	subreddits.append(reddit.subreddit('wallpapers'))
+	
+	top_posts = top_post_list(subreddits)
+	for post in top_posts: # TODO : assumes that each post has a media element
+		permalink = post.permalink # TODO : log permalink for sourcing
+		image_url = post.url
+	
+		save_image(combined_path, image_url)
+	
+	dat.dict = dict
+	write_data(dat)
 
-main(reddit)
+if __name__ == '__main__':
+	main()
