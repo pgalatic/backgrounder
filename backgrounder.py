@@ -2,7 +2,9 @@
 
 import oauth_info
 import installer
+import datetime
 import requests
+import logging
 import pickle
 import pprint
 import praw
@@ -12,7 +14,7 @@ class Data(object):
 	def __init__(self):
 		self.dict = {}
 
-def init():
+def get_reddit():
 	write_praw_ini()
 	
 	reddit = praw.Reddit(client_id=oauth_info.client_id,
@@ -21,6 +23,17 @@ def init():
 						 user_agent=oauth_info.user_agent)
 	reddit.read_only = True
 	return reddit
+
+def get_logger():
+	logger = logging.getLogger('backgrounder')
+	logger.setLevel(logging.INFO)
+	
+	fh = logging.FileHandler('backgrounder.log')
+	fh.setLevel(logging.INFO)
+	
+	logger.addHandler(fh)
+	
+	return logger
 
 def write_praw_ini():
 	"""
@@ -40,11 +53,13 @@ def write_praw_ini():
 			out.write('subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n')
 			out.write('reddit_url=https://www.reddit.com\n')
 			out.write('short_url=https://redd.it\n')
+			out.close()
 	
 def read_data():
 	if os.path.isfile('data.pkl'):
 		with open('data.pkl', 'rb') as input:
 			dat = pickle.load(input)
+			input.close()
 			return dat
 	return None
 	
@@ -64,11 +79,14 @@ def save_image(combined_path, image_url):
 				break
 			
 			handle.write(block)
+		
+		handle.close()
 
 def combine_paths(dict):
 	picture_path = dict['picture_path']
 	image_id = dict['image_id']
 	image_ext = "/" + str(image_id) + ".png"
+	# loop through different extensions to avoid overwriting images
 	while os.path.isfile(picture_path + image_ext):
 		image_id += 1
 		image_ext = "/" + str(image_id) + ".png"
@@ -81,11 +99,34 @@ def top_post_list(subreddit_list):
 		# TODO : Maybe change this limit?
 		for submission in subreddit.top(time_filter='day', limit=1):
 			tops.append(submission)
-	return tops	
+	return tops
 
-def main():
-	reddit = init()
+def grab_image(dict):
+	reddit = get_reddit()
+	subreddits = [] # TODO : import from dict
+	subreddits.append(reddit.subreddit('wallpapers'))
 	
+	log = get_logger() # TODO : make accessible to other functions?
+	
+	combined_path = combine_paths(dict)
+	
+	top_posts = top_post_list(subreddits)
+	for post in top_posts: # TODO : assumes that each post has a media element
+		permalink = post.permalink # TODO : log permalink for sourcing
+		image_url = post.url
+	
+		save_image(combined_path, image_url)
+		
+		message = str(datetime.datetime.now()) + ': image saved --' + 	\
+				  '\n\tlocation: \t' + combined_path +					\
+				  '\n\tsource: \t' + str(permalink) +					\
+				  '\n'
+		
+		log.info(message)
+	
+def main():
+	# grab data from save file
+	# install if there is no data
 	dat = read_data()
 	if dat is None:
 		dict = installer.install()
@@ -94,17 +135,18 @@ def main():
 	else:
 		dict = dat.dict
 	
-	combined_path = combine_paths(dict)
+	# run this script only if one of the following conditions is true:
+	#	* it has been 24hrs since last run
+	#	* the script has just been installed
+	# TODO : Make this configurable without duplicating images
+	datetime_difference = datetime.datetime.now() - dict['last_run_datetime']
+	if not (datetime_difference.total_seconds() > 86400 or datetime_difference.total_seconds() < 60):
+		print('Too soon since last run. Aborting') # TODO: log this
+		return
 	
-	subreddits = [] # TODO : import from dict
-	subreddits.append(reddit.subreddit('wallpapers'))
+	grab_image(dict)
 	
-	top_posts = top_post_list(subreddits)
-	for post in top_posts: # TODO : assumes that each post has a media element
-		permalink = post.permalink # TODO : log permalink for sourcing
-		image_url = post.url
-	
-		save_image(combined_path, image_url)
+	dict['last_run_datetime'] = datetime.datetime.now()
 	
 	dat.dict = dict
 	write_data(dat)

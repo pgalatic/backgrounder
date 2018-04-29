@@ -1,1 +1,8 @@
+build/
+*.pyc
+*.pkl
+*.spec
+*.log
+backgrounder.exe
+praw.ini
 oauth_info.py
