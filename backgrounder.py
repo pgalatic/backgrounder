@@ -10,13 +10,19 @@ import pprint
 import praw
 import os
 
+# TODO : pip install pycodestyle
+# TODO : pip install autopep8
+
 class Data(object):
+	""""""
 	def __init__(self):
 		self.dict = {}
 
 def get_reddit():
+	"""Initializes and returns the Reddit object."""
 	write_praw_ini()
 	
+	# Secret info is packaged into executable
 	reddit = praw.Reddit(client_id=oauth_info.client_id,
 						 client_secret=oauth_info.client_secret,
 						 redirect_uri=oauth_info.redirect_uri,
@@ -25,6 +31,7 @@ def get_reddit():
 	return reddit
 
 def get_logger():
+	"""Initializes and returns the logging object."""
 	logger = logging.getLogger('backgrounder')
 	logger.setLevel(logging.INFO)
 	
@@ -37,37 +44,51 @@ def get_logger():
 
 def write_praw_ini():
 	"""
+	Creates a praw.ini file if one does not already exist.
+	
 	The Python-Reddit API Wrapper (PRAW) requires a .ini file in order to run.
 	If that file is not present, the executable will fail. This function writes
 	that file out for the user if it is not present (as I am not tempted to dig
 	into Pyinstaller to figure out why it isn't being included in the exe file
 	in the first place).
 	
-	You can find out what these INI values mean by looking them up in the PRAW
-	package.
+	For more detail, visit:
+	praw.readthedocs.io/en/latest/getting_started/configuration/prawini.html
 	"""
 	if not os.path.isfile('praw.ini'):
 		with open('praw.ini', 'w') as out:
-			out.write('[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n')
-			out.write('message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n')
-			out.write('subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n')
-			out.write('reddit_url=https://www.reddit.com\n')
-			out.write('short_url=https://redd.it\n')
-			out.close()
+			message = (
+				'[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n',
+				'message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n',
+				'subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n',
+				'subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n',
+				'reddit_url=https://www.reddit.com\n',
+				'short_url=https://redd.it\n'
+			)
+			out.write(message)
 	
 def read_data():
+	"""Reads and returns save data."""
 	if os.path.isfile('data.pkl'):
 		with open('data.pkl', 'rb') as input:
 			dat = pickle.load(input)
-			input.close()
 			return dat
 	return None
-	
+
 def write_data(dat):
+	"""Writes save data to disk. Overrwrites any existing data."""
 	with open('data.pkl', 'wb') as out:
 		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 
 def save_image(combined_path, image_url):
+	"""
+	Retrieves an image and stores it to disk.
+	
+	Arguments:
+	combined_path -- The path containing the pwd of the image as well as its 
+		filename
+	image_url -- The URL of the image to retrieve
+	"""
 	with open(combined_path, 'wb') as handle:
 		response = requests.get(image_url, stream=True)
 		
@@ -79,10 +100,20 @@ def save_image(combined_path, image_url):
 				break
 			
 			handle.write(block)
-		
-		handle.close()
 
 def combine_paths(dict):
+	"""
+	Determines the precise location where the new image will be written.
+	
+	This procedure takes the user-specified file path where images will 
+	be stored and searches for an unused filename based on the last-used
+	filename in the save data. This is to avoid overwriting images.
+	
+	Arguments:
+	dict -- save data
+	Returns:
+	a viable path for the new image
+	"""
 	picture_path = dict['picture_path']
 	image_id = dict['image_id']
 	image_ext = "/" + str(image_id) + ".png"
@@ -94,6 +125,7 @@ def combine_paths(dict):
 	return picture_path + image_ext
 
 def top_post_list(subreddit_list):
+	"""Returns a list of top posts, one for each in subreddit_list."""
 	tops = []
 	for subreddit in subreddit_list:
 		# TODO : Maybe change this limit?
@@ -101,7 +133,16 @@ def top_post_list(subreddit_list):
 			tops.append(submission)
 	return tops
 
-def grab_image(dict):
+def grab_images(dict):
+	"""
+	Retrieves a set of images to save.
+	
+	Reaches out to Reddit and retrieves a set of top images to store in the 
+	user-specified location.
+	
+	Arguments:
+	dict -- save data
+	"""
 	reddit = get_reddit()
 	subreddits = [] # TODO : import from dict
 	subreddits.append(reddit.subreddit('wallpapers'))
@@ -123,8 +164,15 @@ def grab_image(dict):
 				  '\n'
 		
 		log.info(message)
-	
+
 def main():
+	"""
+	Main function. Prompts for installation, reads data, and checks time.
+	
+	If there is no save data, run the installer and generate save data. 
+	Once data is available, check to see if sufficient time has passed since
+	the last run. If so, grab images. Otherwise, return.
+	"""
 	# grab data from save file
 	# install if there is no data
 	dat = read_data()
@@ -144,7 +192,7 @@ def main():
 		print('Too soon since last run. Aborting') # TODO: log this
 		return
 	
-	grab_image(dict)
+	grab_images(dict)
 	
 	dict['last_run_datetime'] = datetime.datetime.now()
 	
