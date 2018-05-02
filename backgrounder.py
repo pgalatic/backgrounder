@@ -1,22 +1,18 @@
 # author: Paul Galatic github.com/pgalatic
+#
+# main file
+#
 
+from data import Data
 import oauth_info
-import installer
 import datetime
 import requests
 import logging
+import loader
 import pickle
 import pprint
 import praw
 import os
-
-# TODO : pip install pycodestyle
-# TODO : pip install autopep8
-
-class Data(object):
-	""""""
-	def __init__(self):
-		self.dict = {}
 
 def get_reddit():
 	"""Initializes and returns the Reddit object."""
@@ -76,7 +72,7 @@ def read_data():
 	return None
 
 def write_data(dat):
-	"""Writes save data to disk. Overrwrites any existing data."""
+	"""Writes save data to disk. Overwrites any existing data."""
 	with open('data.pkl', 'wb') as out:
 		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 
@@ -101,7 +97,7 @@ def save_image(combined_path, image_url):
 			
 			handle.write(block)
 
-def combine_paths(dict):
+def combine_paths(userdata):
 	"""
 	Determines the precise location where the new image will be written.
 	
@@ -110,18 +106,18 @@ def combine_paths(dict):
 	filename in the save data. This is to avoid overwriting images.
 	
 	Arguments:
-	dict -- save data
+	userdata -- save data
 	Returns:
 	a viable path for the new image
 	"""
-	picture_path = dict['picture_path']
-	image_id = dict['image_id']
+	picture_path = userdata['picture_path']
+	image_id = userdata['image_id']
 	image_ext = "/" + str(image_id) + ".png"
 	# loop through different extensions to avoid overwriting images
 	while os.path.isfile(picture_path + image_ext):
 		image_id += 1
 		image_ext = "/" + str(image_id) + ".png"
-	dict['image_id'] = image_id
+	userdata['image_id'] = image_id
 	return picture_path + image_ext
 
 def top_post_list(subreddit_list):
@@ -133,7 +129,7 @@ def top_post_list(subreddit_list):
 			tops.append(submission)
 	return tops
 
-def grab_images(dict):
+def grab_images(userdata):
 	"""
 	Retrieves a set of images to save.
 	
@@ -141,15 +137,15 @@ def grab_images(dict):
 	user-specified location.
 	
 	Arguments:
-	dict -- save data
+	userdata -- save data
 	"""
 	reddit = get_reddit()
-	subreddits = [] # TODO : import from dict
+	subreddits = [] # TODO : import from userdata
 	subreddits.append(reddit.subreddit('wallpapers'))
 	
 	log = get_logger() # TODO : make accessible to other functions?
 	
-	combined_path = combine_paths(dict)
+	combined_path = combine_paths(userdata)
 	
 	top_posts = top_post_list(subreddits)
 	for post in top_posts: # TODO : assumes that each post has a media element
@@ -169,7 +165,7 @@ def main():
 	"""
 	Main function. Prompts for installation, reads data, and checks time.
 	
-	If there is no save data, run the installer and generate save data. 
+	If there is no save data, run the loader and generate save data. 
 	Once data is available, check to see if sufficient time has passed since
 	the last run. If so, grab images. Otherwise, return.
 	"""
@@ -177,27 +173,25 @@ def main():
 	# install if there is no data
 	dat = read_data()
 	if dat is None:
-		dict = installer.install()
-		dat = Data()
-		dat.dict = dict
-	else:
-		dict = dat.dict
+		dat = loader.install()
+	
+	userdata = dat.userdata
 	
 	# run this script only if one of the following conditions is true:
 	#	* it has been 24hrs since last run
 	#	* the script has just been installed
 	# TODO : Make this configurable without duplicating images
-	datetime_difference = datetime.datetime.now() - dict['last_run_datetime']
+	datetime_difference = datetime.datetime.now() - userdata['last_run_datetime']
 	if not (datetime_difference.total_seconds() > 86400 or datetime_difference.total_seconds() < 60):
 		print('Too soon since last run. Aborting') # TODO: log this
 		return
 	
-	grab_images(dict)
+	grab_images(userdata)
 	
-	dict['last_run_datetime'] = datetime.datetime.now()
+	userdata['last_run_datetime'] = datetime.datetime.now()
 	
-	dat.dict = dict
+	dat.userdata = userdata
 	write_data(dat)
 
-if __name__ == '__main__':
+if __name__ is '__main__':
 	main()
