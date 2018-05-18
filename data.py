@@ -3,7 +3,7 @@
 # class for data storage
 #
 
-class Data(object):
+class Data():
 	""""""
 	def __init__(self):
 		self.userdata = {}
