@@ -8,16 +8,16 @@ import oauth_info
 import datetime
 import requests
 import logging
+import random
 import loader
-import pickle
 import pprint
 import praw
 import os
 
+ENFORCE_RUNTIME_LIMIT = True
+
 def get_reddit():
-	"""Initializes and returns the Reddit object."""
-	write_praw_ini()
-	
+	"""Initializes and returns the Reddit object."""	
 	# Secret info is packaged into executable
 	reddit = praw.Reddit(client_id=oauth_info.client_id,
 						 client_secret=oauth_info.client_secret,
@@ -37,33 +37,6 @@ def get_logger():
 	logger.addHandler(fh)
 	
 	return logger
-
-def write_praw_ini():
-	"""
-	Creates a praw.ini file if one does not already exist.
-	
-	The Python-Reddit API Wrapper (PRAW) requires a .ini file in order to run.
-	If that file is not present, the executable will fail. This function writes
-	that file out for the user if it is not present (as I am not tempted to dig
-	into Pyinstaller to figure out why it isn't being included in the exe file
-	in the first place).
-	
-	For more detail, visit:
-	praw.readthedocs.io/en/latest/getting_started/configuration/prawini.html
-	"""
-	if not os.path.isfile('praw.ini'):
-		with open('praw.ini', 'w') as out:
-			message = (
-				'[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n',
-				'message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n',
-				'subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n',
-				'subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n',
-				'reddit_url=https://www.reddit.com\n',
-				'short_url=https://redd.it\n'
-			)
-			out.write(message)
-	
-
 
 def save_image(combined_path, image_url):
 	"""
@@ -86,21 +59,22 @@ def save_image(combined_path, image_url):
 			
 			handle.write(block)
 
-def combine_paths(dat):
+def combine_paths(dat, increment=0):
 	"""
 	Determines the precise location where the new image will be written.
 	
-	This procedure takes the user-specified file path where images will 
-	be stored and searches for an unused filename based on the last-used
-	filename in the save data. This is to avoid overwriting images.
+	This procedure takes the user-specified file path where images will be 
+	stored and searches for an unused filename based on the last-used filename 
+	in the save data. This is to avoid overwriting images.
 	
 	Arguments:
 	dat -- save data
+	increment -- for saving multiple images, allows the id to be increased
 	Returns:
 	a viable path for the new image
 	"""
 	filepath = dat.configdata['filepath']
-	image_id = dat.userdata['image_id']
+	image_id = dat.userdata['image_id'] + increment
 	image_ext = "/" + str(image_id) + ".png"
 	# loop through different extensions to avoid overwriting images
 	while os.path.isfile(filepath + image_ext):
@@ -109,13 +83,31 @@ def combine_paths(dat):
 	dat.userdata['image_id'] = image_id
 	return filepath + image_ext
 
-def top_post_list(subreddits):
-	"""Returns a list of top posts, one for each in subreddit_list."""
+def topmost_post(subreddits):
+	"""Returns the highest-upvoted post of all subreddits."""
+	tops = all_top_posts(subreddits)
+	top = tops[0]
+	for submission in tops:
+		if submission.score > top.score:
+			top = submission
+	return [top]
+	
+def all_top_posts(subreddits):
+	"""Returns a list of top posts, one for each in subreddits."""
 	tops = []
 	for subreddit in subreddits:
 		# TODO : Maybe change this limit?
+		# WARN : If the subreddit has low activity, this function may fail
 		for submission in subreddit.top(time_filter='day', limit=1):
 			tops.append(submission)
+	return tops
+	
+def rand_top_post(subreddits):
+	"""Chooses a random subreddit and grabs the top post from that."""
+	tops = []
+	subreddit = subreddits[random.randint(0, len(subreddits) - 1)]
+	for submission in subreddit.top(time_filter='day', limit=1):
+		tops.append(submission)
 	return tops
 
 def grab_images(dat):
@@ -128,21 +120,30 @@ def grab_images(dat):
 	Arguments:
 	dat -- save data
 	"""
+	# TODO : Grab images by resolution / resolution minimum
+	
 	reddit = get_reddit()
 	subreddit_names = dat.configdata['subreddits']
 	subreddits = [reddit.subreddit(name) for name in subreddit_names]
-	
 	log = get_logger() # TODO : make accessible to other functions?
+		
+	# use different method to save image depending on user's stated preference
+	if dat.configdata['postsave'] == 0:
+		top_posts = topmost_post(subreddits)
+	elif dat.configdata['postsave'] == 1:
+		top_posts = all_top_posts(subreddits)
+	elif dat.configdata['postsave'] == 2:
+		top_posts = rand_top_post(subreddits)
+	else:
+		raise Exception('Bad config data (post save method)')
 	
-	combined_path = combine_paths(dat)
-	
-	top_posts = top_post_list(subreddits)
-	
-	
-	
+	increment = 0
 	for post in top_posts: # TODO : assumes that each post has a media element
 		permalink = post.permalink # TODO : log permalink for sourcing
 		image_url = post.url
+		
+		combined_path = combine_paths(dat, increment)
+		increment += 1
 	
 		save_image(combined_path, image_url)
 		
@@ -169,9 +170,10 @@ def main():
 	#	* the script has just been installed
 	# TODO : Make this configurable without duplicating images
 	datetime_difference = datetime.datetime.now() - dat.userdata['last_run_datetime']
-	if not (datetime_difference.total_seconds() > 86400 or datetime_difference.total_seconds() < 60):
-		print('Too soon since last run. Aborting') # TODO: log this
-		return
+	if ENFORCE_RUNTIME_LIMIT:
+		if not (datetime_difference.total_seconds() > 86400 or datetime_difference.total_seconds() < 10):
+			print('Too soon since last run. Aborting') # TODO: log this
+			return
 	
 	grab_images(dat)
 	

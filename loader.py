@@ -4,10 +4,12 @@
 #
 
 import os
+import pickle
 import datetime
 import configparser
 import tkinter as tk
 from data import Data
+from ast import literal_eval
 from tkinter import messagebox
 from tkinter import filedialog
 from win32com.client import Dispatch
@@ -17,7 +19,6 @@ DEFAULTS = {'Wallpaper'				: 'General wallpapers',
 			'Wallpapers'			: 'General pop culture wallpapers', 
 			'MinimalWallpaper'		: 'Minimalist wallpapers',
 			'Hi_Res'				: 'High resolution wallpapers',
-			'UnitedStateofAmerica'	: 'Photography from the United States',
 			'EarthPorn'				: 'Images of nature',
 			'BackgroundArt'			: 'Images of art'}
 
@@ -85,21 +86,21 @@ class Config_GUI():
 		
 		tk.Radiobutton(	
 					postsave_frame, 
-					text='Select top post from all selections', 
+					text='Select top post from all selected subreddits', 
 					variable=postsave_var,
 					value=0
 				).grid(row=1, column=0)
 		
 		tk.Radiobutton(
 					postsave_frame,
-					text='Select all top posts from all selections',
+					text='Select all top posts from all selected subreddits',
 					variable=postsave_var,
 					value=1
 				).grid(row=2, column=0)
 		
 		tk.Radiobutton(
 					postsave_frame,
-					text='Select top post from random among selections',
+					text='Select top post from a random subreddit among those selected',
 					variable=postsave_var,
 					value=2
 				).grid(row=3, column=0)
@@ -146,6 +147,7 @@ class Config_GUI():
 		return self.postsave_var.get()
 	
 	def validate_input(self):
+		# TODO: Validate config file
 		filepath_valid = False
 		subreddits_valid = False
 		postsave_valid = False
@@ -162,7 +164,6 @@ class Config_GUI():
 		
 		postsave = self.get_postsave_input()
 		if postsave >= 0:
-			print(postsave)
 			postsave_valid = True
 		
 		# warn user
@@ -191,8 +192,29 @@ def create_shortcut():
 	shortcut.WorkingDirectory = os.getcwd()
 	shortcut.IconLocation = execpath
 	shortcut.save()
+
+def write_praw_ini():
+	"""
+	Creates a praw.ini file if one does not already exist.
 	
-def create_config_file(configdata):
+	The Python-Reddit API Wrapper (PRAW) requires a .ini file in order to run.
+	If that file is not present, the executable will fail. This function writes
+	that file out for the user if it is not present (as I am not tempted to dig
+	into Pyinstaller to figure out why it isn't being included in the exe file
+	in the first place). The executable version is temperamental about actually
+	writing the file, so temper with this function at your own risk.
+	
+	For more detail, visit:
+	praw.readthedocs.io/en/latest/getting_started/configuration/prawini.html
+	"""
+	with open('praw.ini', 'w') as out:
+		out.write('[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n')
+		out.write('message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n')
+		out.write('subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n')
+		out.write('reddit_url=https://www.reddit.com\n')
+		out.write('short_url=https://redd.it\n')
+	
+def write_config_file(configdata):
 	config = configparser.ConfigParser(allow_no_value=True)
 	
 	# file path preferences
@@ -204,27 +226,32 @@ def create_config_file(configdata):
 	
 	# subreddit preferences
 	
-	subslist = ','.join(configdata['subreddits']) # create delimited list of subs
+	subreddits = str((configdata['subreddits'])) # create delimited list of subs
 	config.add_section('subreddits')
 	config.set('subreddits', '# list of subreddits to pull from')
-	config.set('subreddits', 'subreddits', subslist)
+	config.set('subreddits', 'subreddits', str(subreddits))
 	
 	# post saving preferences
 	
 	postsave = configdata['postsave']
 	config.add_section('postsave')
 	config.set('postsave', '# method by which the posts will be saved')
-	config.set('postsave', 'method', postsave)
+	config.set('postsave', 'method', str(postsave))
 	
 	with open('backgrounder.ini', 'w') as file:
 		config.write(file)
 
 def read_config_file():
 	config = configparser.ConfigParser(allow_no_value=True)
+	configdata = {}
 	
 	config.read('backgrounder.ini')
 	
-	# TODO
+	configdata['filepath'] = config['filepath']['filepath']
+	configdata['subreddits'] = literal_eval(config['subreddits']['subreddits'])
+	configdata['postsave'] = int(config['postsave']['method'])
+	
+	return configdata
 		
 def request_config():
 	configdata = {}
@@ -242,7 +269,8 @@ def install():
 	dat = Data()
 	
 	dat.configdata = request_config()
-	create_config_file(dat.configdata)
+	write_config_file(dat.configdata)
+	write_praw_ini()
 	
 	dat.userdata['image_id'] = 0
 	dat.userdata['last_run_datetime'] = datetime.datetime.now()
@@ -259,6 +287,7 @@ def read_data():
 	if os.path.isfile('data.pkl'):
 		with open('data.pkl', 'rb') as input:
 			dat = pickle.load(input)
+			dat.configdata = read_config_file()
 			return dat
 	else:
 		return install()
