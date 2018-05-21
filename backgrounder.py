@@ -63,18 +63,7 @@ def write_praw_ini():
 			)
 			out.write(message)
 	
-def read_data():
-	"""Reads and returns save data."""
-	if os.path.isfile('data.pkl'):
-		with open('data.pkl', 'rb') as input:
-			dat = pickle.load(input)
-			return dat
-	return None
 
-def write_data(dat):
-	"""Writes save data to disk. Overwrites any existing data."""
-	with open('data.pkl', 'wb') as out:
-		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 
 def save_image(combined_path, image_url):
 	"""
@@ -97,7 +86,7 @@ def save_image(combined_path, image_url):
 			
 			handle.write(block)
 
-def combine_paths(userdata):
+def combine_paths(dat):
 	"""
 	Determines the precise location where the new image will be written.
 	
@@ -106,30 +95,30 @@ def combine_paths(userdata):
 	filename in the save data. This is to avoid overwriting images.
 	
 	Arguments:
-	userdata -- save data
+	dat -- save data
 	Returns:
 	a viable path for the new image
 	"""
-	picture_path = userdata['picture_path']
-	image_id = userdata['image_id']
+	filepath = dat.configdata['filepath']
+	image_id = dat.userdata['image_id']
 	image_ext = "/" + str(image_id) + ".png"
 	# loop through different extensions to avoid overwriting images
-	while os.path.isfile(picture_path + image_ext):
+	while os.path.isfile(filepath + image_ext):
 		image_id += 1
 		image_ext = "/" + str(image_id) + ".png"
-	userdata['image_id'] = image_id
-	return picture_path + image_ext
+	dat.userdata['image_id'] = image_id
+	return filepath + image_ext
 
-def top_post_list(subreddit_list):
+def top_post_list(subreddits):
 	"""Returns a list of top posts, one for each in subreddit_list."""
 	tops = []
-	for subreddit in subreddit_list:
+	for subreddit in subreddits:
 		# TODO : Maybe change this limit?
 		for submission in subreddit.top(time_filter='day', limit=1):
 			tops.append(submission)
 	return tops
 
-def grab_images(userdata):
+def grab_images(dat):
 	"""
 	Retrieves a set of images to save.
 	
@@ -137,17 +126,20 @@ def grab_images(userdata):
 	user-specified location.
 	
 	Arguments:
-	userdata -- save data
+	dat -- save data
 	"""
 	reddit = get_reddit()
-	subreddits = [] # TODO : import from userdata
-	subreddits.append(reddit.subreddit('wallpapers'))
+	subreddit_names = dat.configdata['subreddits']
+	subreddits = [reddit.subreddit(name) for name in subreddit_names]
 	
 	log = get_logger() # TODO : make accessible to other functions?
 	
-	combined_path = combine_paths(userdata)
+	combined_path = combine_paths(dat)
 	
 	top_posts = top_post_list(subreddits)
+	
+	
+	
 	for post in top_posts: # TODO : assumes that each post has a media element
 		permalink = post.permalink # TODO : log permalink for sourcing
 		image_url = post.url
@@ -170,28 +162,22 @@ def main():
 	the last run. If so, grab images. Otherwise, return.
 	"""
 	# grab data from save file
-	# install if there is no data
-	dat = read_data()
-	if dat is None:
-		dat = loader.install()
-	
-	userdata = dat.userdata
+	dat = loader.read_data()
 	
 	# run this script only if one of the following conditions is true:
 	#	* it has been 24hrs since last run
 	#	* the script has just been installed
 	# TODO : Make this configurable without duplicating images
-	datetime_difference = datetime.datetime.now() - userdata['last_run_datetime']
+	datetime_difference = datetime.datetime.now() - dat.userdata['last_run_datetime']
 	if not (datetime_difference.total_seconds() > 86400 or datetime_difference.total_seconds() < 60):
 		print('Too soon since last run. Aborting') # TODO: log this
 		return
 	
-	grab_images(userdata)
+	grab_images(dat)
 	
-	userdata['last_run_datetime'] = datetime.datetime.now()
+	dat.userdata['last_run_datetime'] = datetime.datetime.now()
 	
-	dat.userdata = userdata
-	write_data(dat)
+	loader.write_data(dat)
 
-if __name__ is '__main__':
+if __name__ == '__main__':
 	main()
