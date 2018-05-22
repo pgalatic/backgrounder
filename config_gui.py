@@ -49,7 +49,7 @@ class Config_GUI():
 		filepath_lbl = tk.Label(filepath_frame, text='Select a folder to store images in.')
 		filepath_lbl.grid(row=0, column=0, sticky=tk.W)
 		
-		filepath_btn = tk.Button(filepath_frame, text='Set', command=lambda: self.request_directory())
+		filepath_btn = tk.Button(filepath_frame, text='Choose', width=10, command=lambda: self.request_directory())
 		filepath_btn.grid(row=0, column=1, sticky=tk.E, padx=PADX)
 		
 		filepath_txt = tk.Entry(filepath_frame, textvariable=filepath_input, width=50)
@@ -112,6 +112,8 @@ class Config_GUI():
 					value=2
 				).grid(row=3, column=0, sticky=tk.W)
 		
+		# TODO : Add config for min time between runs
+		
 		# Close button
 		
 		close_btn = tk.Button(botframe, text='Finish', command=lambda: self.validate_input())
@@ -126,7 +128,14 @@ class Config_GUI():
 		self.subreddit_vars = subreddit_vars
 		self.postsave_var = postsave_var
 		
+		self.installation_completed = False
+		
 	def activate(self):
+		"""
+		Activates the GUI and displays it to the user. Collects data afterward.
+		
+		return: the configuration data the user submitted
+		"""
 		configdata = {}
 		
 		self.root.mainloop()
@@ -138,17 +147,24 @@ class Config_GUI():
 		return configdata
 		
 	def request_directory(self):
+		"""
+		Displays a prompt for the user to select a directory. Once selected, 
+		that information is stored in an Entry.
+		"""
 		filepath = filedialog.askdirectory(
 					parent=self.root,
 					initialdir=os.getcwd(),
 					title='Please select a folder:'
 				)
+		self.filepath_txt.delete(0, 'end')
 		self.filepath_txt.insert(0, filepath)
 	
 	def get_filepath_input(self):
+		"""Returns a string -- where the user chose to store theiri images."""
 		return self.filepath_input.get()
 	
 	def get_subreddit_input(self):
+		"""Returns a list of strings -- subreddits the user chose"""
 		subreddits = []
 		i = 0
 		for subreddit in DEFAULTS:
@@ -159,9 +175,17 @@ class Config_GUI():
 		return subreddits
 	
 	def get_postsave_input(self):
+		"""Returns an integer -- which post saving method the user chose"""
 		return self.postsave_var.get()
 	
 	def validate_input(self):
+		"""
+		Validates that the user's input was legitimate.
+		
+		This function checks to make sure all the input is valid before 
+		allowing the installer to progress. If all the data is valid, it notes
+		that in the state of the GUI.
+		"""
 		# TODO: Validate config file
 		filepath_valid = False
 		subreddits_valid = False
@@ -189,6 +213,7 @@ class Config_GUI():
 		elif not postsave_valid:
 			tk.messagebox.showinfo('Warning', 'Please choose a method by which to have your posts saved.')
 		else:
+			self.installation_completed = True
 			self.root.destroy()
 			
 def main():

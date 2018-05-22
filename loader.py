@@ -12,7 +12,7 @@ from ast import literal_eval
 from config_gui import Config_GUI
 from win32com.client import Dispatch
 
-VERSION = '0.3'
+VERSION = '0.4'
 
 def create_shortcut():
 	"""
@@ -111,6 +111,12 @@ def install():
 	GUI = Config_GUI()
 	
 	dat.configdata = GUI.activate()
+	
+	# check to make sure the user didn't exit the installer manually
+	if not GUI.installation_completed:
+		print('WARN: Installation could not successfully validate. Aborting.')
+		return None
+	
 	write_config_file(dat.configdata)
 	write_praw_ini()
 	

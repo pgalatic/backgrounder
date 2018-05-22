@@ -3,16 +3,16 @@
 # main file
 #
 
-from data import Data
-import oauth_info
+import os
+import praw
+import pprint
+import loader
+import random
+import logging
 import datetime
 import requests
-import logging
-import random
-import loader
-import pprint
-import praw
-import os
+import oauth_info
+from data import Data
 
 ENFORCE_RUNTIME_LIMIT = True
 
@@ -164,6 +164,9 @@ def main():
 	"""
 	# grab data from save file
 	dat = loader.read_data()
+	
+	if dat is None:
+		return # installation failed
 	
 	# run this script only if one of the following conditions is true:
 	#	* it has been 24hrs since last run
