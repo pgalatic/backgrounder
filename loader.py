@@ -1,182 +1,27 @@
 # author: Paul Galatic github.com/pgalatic
 #
-# functionality for first-time app setup
+# functionality for saving / loading data
 #
 
 import os
 import pickle
 import datetime
 import configparser
-import tkinter as tk
 from data import Data
 from ast import literal_eval
-from tkinter import messagebox
-from tkinter import filedialog
+from config_gui import Config_GUI
 from win32com.client import Dispatch
 
 VERSION = '0.3'
-DEFAULTS = {'Wallpaper'				: 'General wallpapers',
-			'Wallpapers'			: 'General pop culture wallpapers', 
-			'MinimalWallpaper'		: 'Minimalist wallpapers',
-			'Hi_Res'				: 'High resolution wallpapers',
-			'EarthPorn'				: 'Images of nature',
-			'BackgroundArt'			: 'Images of art'}
-
-class Config_GUI():
-	""""""
-	def __init__(self):
-		root = tk.Tk()
-		root.title('Backgrounder')
-		root.geometry('500x500')
-		root.borderwidth = 1
-	
-		topframe = tk.Frame(root, height=450, width=500)
-		topframe.borderwidth = 20
-		topframe.pack()
-		
-		botframe = tk.Frame(root, height=50, width=400)
-		botframe.borderwidth = 20
-		botframe.pack()
-		
-		# Get input for file path
-		
-		filepath_frame = tk.Frame(topframe, height=150, width=400)
-		filepath_frame.borderwidth = 20
-		filepath_frame.pack()
-		
-		filepath_input = tk.StringVar(filepath_frame)
-		
-		filepath_lbl = tk.Label(filepath_frame, text='Select a folder to store images in.')
-		filepath_lbl.grid(row=0, column=0)
-		
-		filepath_btn = tk.Button(filepath_frame, text='Set', command=lambda: self.request_directory())
-		filepath_btn.grid(row=0, column=1)
-		
-		filepath_txt = tk.Entry(filepath_frame, textvariable=filepath_input, width=50)
-		filepath_txt.readonly = True
-		filepath_txt.grid(row=1, column=0)
-		
-		# Get input for subreddit preferences
-		
-		subreddits_frame = tk.Frame(topframe, height=300, width=400)
-		subreddits_frame.borderwidth = 20
-		subreddits_frame.pack()
-		
-		subreddits_lbl = tk.Label(subreddits_frame, text='Select which subreddits to pull images from.')
-		subreddits_lbl.grid(row=0, column=0)
-		
-		i = 0
-		subreddit_vars = [tk.IntVar() for subreddit in DEFAULTS]
-		for subreddit, description in DEFAULTS.items():
-			tk.Checkbutton(subreddits_frame, text=subreddit, variable=subreddit_vars[i]).grid(row=1+i, column=0)
-			tk.Label(subreddits_frame, text=description).grid(row=1+i, column=1)
-			i += 1
-		
-		# Get input for top post saving preferences
-		
-		postsave_frame = tk.Frame(topframe, height=150, width=400)
-		postsave_frame.borderwidth = 20
-		postsave_frame.pack()
-		
-		postsave_lbl = tk.Label(postsave_frame, text='Select how you would like posts to be saved.')
-		postsave_lbl.grid(row=0, column=0)
-		
-		postsave_var = tk.IntVar()
-		postsave_var.set(-1)
-		
-		tk.Radiobutton(	
-					postsave_frame, 
-					text='Select top post from all selected subreddits', 
-					variable=postsave_var,
-					value=0
-				).grid(row=1, column=0)
-		
-		tk.Radiobutton(
-					postsave_frame,
-					text='Select all top posts from all selected subreddits',
-					variable=postsave_var,
-					value=1
-				).grid(row=2, column=0)
-		
-		tk.Radiobutton(
-					postsave_frame,
-					text='Select top post from a random subreddit among those selected',
-					variable=postsave_var,
-					value=2
-				).grid(row=3, column=0)
-		
-		# Close button
-		
-		close_btn = tk.Button(botframe, text='Finish', command=lambda: self.validate_input())
-		close_btn.grid(row=0, column=1)
-		
-		# Store relevant state info
-		
-		self.root = root
-		self.topframe = topframe
-		self.filepath_input = filepath_input
-		self.filepath_txt = filepath_txt
-		self.subreddit_vars = subreddit_vars
-		self.postsave_var = postsave_var
-		
-	def activate(self):
-		self.root.mainloop()
-		
-	def request_directory(self):
-		filepath = filedialog.askdirectory(
-					parent=self.root,
-					initialdir=os.getcwd(),
-					title='Please select a folder:'
-				)
-		self.filepath_txt.insert(0, filepath)
-	
-	def get_filepath_input(self):
-		return self.filepath_input.get()
-	
-	def get_subreddit_input(self):
-		subreddits = []
-		i = 0
-		for subreddit in DEFAULTS:
-			if self.subreddit_vars[i].get() == 1:
-				subreddits.append(subreddit)
-			i += 1
-		
-		return subreddits
-	
-	def get_postsave_input(self):
-		return self.postsave_var.get()
-	
-	def validate_input(self):
-		# TODO: Validate config file
-		filepath_valid = False
-		subreddits_valid = False
-		postsave_valid = False
-	
-		# is the chosen filepath a valid directory?
-		filepath = self.get_filepath_input()
-		if os.path.isdir(filepath):
-			filepath_valid = True
-		
-		# was at least one subreddit chosen?
-		subreddits = self.get_subreddit_input()
-		if len(subreddits) > 0:
-			subreddits_valid = True
-		
-		postsave = self.get_postsave_input()
-		if postsave >= 0:
-			postsave_valid = True
-		
-		# warn user
-		if not filepath_valid:
-			tk.messagebox.showinfo('Warning', 'Chosen filepath is not a valid directory. Please choose a new filepath.')
-		elif not subreddits_valid:
-			tk.messagebox.showinfo('Warning', 'Please choose at least one subreddit.')
-		elif not postsave_valid:
-			tk.messagebox.showinfo('Warning', 'Please choose a method by which to have your posts saved.')
-		else:
-			self.root.destroy()
 
 def create_shortcut():
+	"""
+	Creates a shortcut for the program.
+	
+	In order for the program to be run on startup automatically, we create and
+	insert a shortcut into the Start folder of the Windows computer. When the
+	computer starts, the shortcut invokes the program
+	"""
 	# Locate path to folder that automatically starts scripts
 	basepath = os.path.expanduser('~')
 	startpath = basepath + '\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup'
@@ -186,7 +31,7 @@ def create_shortcut():
 	
 	# Create shortcut to script
 	shell = Dispatch('WScript.Shell')
-	execpath = os.getcwd() + '\\backgrounder_v' + VERSION + '.exe'
+	execpath = os.getcwd() + '\\backgrounder_v' + VERSION + '.exe' # path to script
 	shortcut = shell.CreateShortcut(startpath + '\\backgrounder_v' + VERSION + '.lnk')
 	shortcut.Targetpath = execpath
 	shortcut.WorkingDirectory = os.getcwd()
@@ -215,6 +60,12 @@ def write_praw_ini():
 		out.write('short_url=https://redd.it\n')
 	
 def write_config_file(configdata):
+	"""
+	Takes config data and writes it to an ini file.
+	
+	Arguments:
+	configdata -- configuration data; assumes it is filled
+	"""
 	config = configparser.ConfigParser(allow_no_value=True)
 	
 	# file path preferences
@@ -242,6 +93,7 @@ def write_config_file(configdata):
 		config.write(file)
 
 def read_config_file():
+	"""Reads the backgrounder.ini file and imports settings from it."""
 	config = configparser.ConfigParser(allow_no_value=True)
 	configdata = {}
 	
@@ -252,23 +104,13 @@ def read_config_file():
 	configdata['postsave'] = int(config['postsave']['method'])
 	
 	return configdata
-		
-def request_config():
-	configdata = {}
-	
-	GUI = Config_GUI()
-	GUI.activate()
-	
-	configdata['filepath'] = GUI.get_filepath_input()
-	configdata['subreddits'] = GUI.get_subreddit_input()
-	configdata['postsave'] = GUI.get_postsave_input()
-	
-	return configdata
 	
 def install():
+	"""Runs installation procedures."""
 	dat = Data()
+	GUI = Config_GUI()
 	
-	dat.configdata = request_config()
+	dat.configdata = GUI.activate()
 	write_config_file(dat.configdata)
 	write_praw_ini()
 	
@@ -283,11 +125,18 @@ def read_data():
 	"""
 	Reads and returns save data. If no save data exists, runs and returns the
 	result of the installation procedure.
+	
+	return: a Dat object representing all user save and configuration data
 	"""
 	if os.path.isfile('data.pkl'):
 		with open('data.pkl', 'rb') as input:
 			dat = pickle.load(input)
-			dat.configdata = read_config_file()
+			# use user config file if that file exists
+			configdata = read_config_file()
+			if configdata:
+				dat.configdata = configdata
+			else:
+				write_config_file(dat.configdata)
 			return dat
 	else:
 		return install()
@@ -298,12 +147,9 @@ def write_data(dat):
 		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 	
 def main():
-	"""Runs the GUI separate from the rest of the app, for debugging."""
+	"""Currently unused"""
 	
-	configdata = request_config()
-	
-	for key, value in configdata.items():
-		print(str(key) + ' : ' + str(value))
+	print('DEPRECATED')
 	
 if __name__ == '__main__':
 	main()
