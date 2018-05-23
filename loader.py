@@ -9,10 +9,10 @@ import datetime
 import configparser
 from data import Data
 from ast import literal_eval
-from config_gui import Config_GUI
+from gui import config_gui
 from win32com.client import Dispatch
 
-VERSION = '0.4'
+VERSION = '0.5'
 
 def create_shortcut():
 	"""
@@ -37,27 +37,6 @@ def create_shortcut():
 	shortcut.WorkingDirectory = os.getcwd()
 	shortcut.IconLocation = execpath
 	shortcut.save()
-
-def write_praw_ini():
-	"""
-	Creates a praw.ini file if one does not already exist.
-	
-	The Python-Reddit API Wrapper (PRAW) requires a .ini file in order to run.
-	If that file is not present, the executable will fail. This function writes
-	that file out for the user if it is not present (as I am not tempted to dig
-	into Pyinstaller to figure out why it isn't being included in the exe file
-	in the first place). The executable version is temperamental about actually
-	writing the file, so temper with this function at your own risk.
-	
-	For more detail, visit:
-	praw.readthedocs.io/en/latest/getting_started/configuration/prawini.html
-	"""
-	with open('praw.ini', 'w') as out:
-		out.write('[DEFAULT]\ncheck_for_updates=True\ncomment_kind=t1\n')
-		out.write('message_kind=t4\nredditor_kind=t2\nsubmission_kind=t3\n')
-		out.write('subreddit_kind=t5\noauth_url=https://oauth.reddit.com\n')
-		out.write('reddit_url=https://www.reddit.com\n')
-		out.write('short_url=https://redd.it\n')
 	
 def write_config_file(configdata):
 	"""
@@ -108,7 +87,7 @@ def read_config_file():
 def install():
 	"""Runs installation procedures."""
 	dat = Data()
-	GUI = Config_GUI()
+	GUI = config_gui.Config_GUI()
 	
 	dat.configdata = GUI.activate()
 	
@@ -118,7 +97,6 @@ def install():
 		return None
 	
 	write_config_file(dat.configdata)
-	write_praw_ini()
 	
 	dat.userdata['image_id'] = 0
 	dat.userdata['last_run_datetime'] = datetime.datetime.now()
@@ -153,9 +131,12 @@ def write_data(dat):
 		pickle.dump(dat, out, pickle.HIGHEST_PROTOCOL)
 	
 def main():
-	"""Currently unused"""
+	"""Runs the GUI and reports what the user enters, for debugging."""
 	
-	print('DEPRECATED')
+	configdata = config_gui.Config_GUI().activate()
+	
+	for key, value in configdata.items():
+		print(str(key) + ' : ' + str(value))
 	
 if __name__ == '__main__':
 	main()

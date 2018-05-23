@@ -4,27 +4,16 @@
 #
 
 import os
-import praw
 import pprint
 import loader
 import random
 import logging
 import datetime
 import requests
-import oauth_info
 from data import Data
+from reddit import Reddit
 
-ENFORCE_RUNTIME_LIMIT = True
-
-def get_reddit():
-	"""Initializes and returns the Reddit object."""	
-	# Secret info is packaged into executable
-	reddit = praw.Reddit(client_id=oauth_info.client_id,
-						 client_secret=oauth_info.client_secret,
-						 redirect_uri=oauth_info.redirect_uri,
-						 user_agent=oauth_info.user_agent)
-	reddit.read_only = True
-	return reddit
+ENFORCE_RUNTIME_LIMIT = False
 
 def get_logger():
 	"""Initializes and returns the logging object."""
@@ -122,7 +111,7 @@ def grab_images(dat):
 	"""
 	# TODO : Grab images by resolution / resolution minimum
 	
-	reddit = get_reddit()
+	reddit = Reddit().reddit
 	subreddit_names = dat.configdata['subreddits']
 	subreddits = [reddit.subreddit(name) for name in subreddit_names]
 	log = get_logger() # TODO : make accessible to other functions?

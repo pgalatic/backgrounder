@@ -5,5 +5,4 @@ build/
 *.log
 *.ini
 backgrounder.exe
-praw.ini
 oauth_info.py
