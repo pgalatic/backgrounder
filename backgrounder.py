@@ -127,8 +127,9 @@ def grab_images(dat):
 		raise Exception('Bad config data (post save method)')
 	
 	increment = 0
+	# TODO : assumes that top post isn't a gallery (fails if it is)
 	for post in top_posts: # TODO : assumes that each post has a media element
-		permalink = post.permalink # TODO : log permalink for sourcing
+		permalink = post.permalink
 		image_url = post.url
 		
 		combined_path = combine_paths(dat, increment)
