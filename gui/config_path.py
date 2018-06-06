@@ -35,8 +35,8 @@ class Config_Path():
 
         self.btn = tk.Button(
             self.frame,
-            text='Choose',
-            width=10,
+            text='...',
+            width=5,
             command=lambda: self.request_directory()
         )
         self.btn.grid(row=1, column=1, sticky=tk.E, padx=PADX)
