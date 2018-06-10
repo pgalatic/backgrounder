@@ -12,7 +12,7 @@ from gui import config_subs
 PADX = 20
 PADY = 10
 
-CHOICES = {'SECONDS', 'HOURS', 'DAYS'}
+CHOICES = ['SECONDS', 'HOURS', 'DAYS']
 
 class Config_Timing():
     """
@@ -34,14 +34,16 @@ class Config_Timing():
         self.choice.set(CHOICES[1])
 
         self.entry = tk.Entry(
-                self.frame, textvariable=self.var, width=10)
+                self.frame, textvariable=self.value, width=10)
         self.entry.grid(row=1, column=0, sticky=tk.W)
 
         self.dropdown = tk.OptionMenu(self.frame, self.choice, *CHOICES)
         self.dropdown.grid(row=1, column=1, sticky=tk.W)
 
     def get_timing_pref(self):
-        """Returns an amount in seconds based on what the user entered."""
-        # TODO
-        val = self.input.get()
+        """Returns a dict describing the user's chosen options."""
+        value = self.value.get()
+        unit = self.choice.get()
+        
+        return {'value': value, 'unit': unit}
 

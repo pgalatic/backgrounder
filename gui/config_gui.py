@@ -10,6 +10,7 @@ from tkinter import filedialog
 from gui import config_path
 from gui import config_subs
 from gui import config_save
+from gui import config_timing
 
 PADX = 20
 PADY = 10
@@ -48,7 +49,22 @@ class Config_GUI():
 
         self.config_save = config_save.Config_Save(topframe)
 
-        # TODO : Add config for min time between runs
+        # Config for min time between runs
+
+        self.config_timing = config_timing.Config_Timing(topframe)
+        
+        # other options
+        
+        other_options_frame = tk.Frame(topframe)
+        other_options_frame.pack(fill=tk.X, pady=PADY)
+        
+        duplicates_var = tk.IntVar()
+        duplicates_box = tk.Checkbutton(
+                            other_options_frame, 
+                            text='Ignore duplicates', 
+                            variable=duplicates_var
+                        )
+        duplicates_box.grid(row=0, column=0, sticky=tk.W)
 
         # Close button
 
@@ -60,10 +76,24 @@ class Config_GUI():
 
         # GUI elements
         self.root = root
+        self.duplicates_var = duplicates_var
 
         # Internal state
         self.installation_completed = False
 
+    def convert_timing_to_seconds(self, dict):
+        """Converts user timing pref dict into an amount of seconds"""
+        if dict['unit'] == 'SECONDS':
+            unit = 1
+        elif dict['unit'] == 'HOURS':
+            unit = 3600
+        elif dict['unit'] == 'DAYS':
+            unit = 86400
+        else:
+            raise Exception('Unit choice not recognized: ' + timing['unit'])
+            
+        return int(dict['value']) * unit    
+    
     def activate(self):
         """
         Activates the GUI and displays it to the user. Collects data afterward.
@@ -73,10 +103,14 @@ class Config_GUI():
         configdata = {}
 
         self.root.mainloop()
+        
+        timing_dict = self.get_timing_pref()
 
         configdata['filepath'] = self.get_filepath_input()
         configdata['subreddits'] = self.get_subreddit_input()
         configdata['postsave'] = self.get_postsave_input()
+        configdata['timing'] = self.convert_timing_to_seconds(timing_dict)
+        configdata['other'] = self.get_other_options()
 
         return configdata
 
@@ -92,6 +126,17 @@ class Config_GUI():
         """Returns an integer -- which post saving method the user chose"""
         return self.config_save.get_save_pref()
 
+    def get_timing_pref(self):
+        """Returns a dict -- describes the min time between saving images"""
+        return self.config_timing.get_timing_pref()
+    
+    def get_other_options(self):
+        """Returnsa dict -- describes extraneous checkbox options"""
+        dict = {}
+        dict['ignore_duplciates'] = self.duplicates_var.get()
+        
+        return dict
+
     def validate_input(self):
         """
         Validates that the user's input was legitimate.
@@ -104,6 +149,7 @@ class Config_GUI():
         filepath_valid = False
         subreddits_valid = False
         postsave_valid = False
+        timing_valid = False
 
         # is the chosen filepath a valid directory?
         filepath = self.get_filepath_input()
@@ -115,9 +161,15 @@ class Config_GUI():
         if len(subreddits) > 0:
             subreddits_valid = True
 
+        # was a postsave setting selected?
         postsave = self.get_postsave_input()
         if postsave >= 0:
             postsave_valid = True
+
+        # is the entered time an integer?
+        timing = self.get_timing_pref()
+        if timing['value'].isdigit():
+            timing_valid = True
 
         # warn user
         if not filepath_valid:
@@ -129,6 +181,9 @@ class Config_GUI():
         elif not postsave_valid:
             tk.messagebox.showinfo(
                 'Warning', 'Please choose a method by which to have your posts saved.')
+        elif not timing_valid:
+            tk.messagebox.showinfo(
+                'Warning', 'Please enter an integer in the \"time between runs\" window.')
         else:
             self.installation_completed = True
             self.root.destroy()
