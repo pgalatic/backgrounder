@@ -133,7 +133,7 @@ class Config_GUI():
     def get_other_options(self):
         """Returnsa dict -- describes extraneous checkbox options"""
         dict = {}
-        dict['ignore_duplciates'] = self.duplicates_var.get()
+        dict['ignore_duplicates'] = self.duplicates_var.get()
         
         return dict
 

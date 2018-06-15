@@ -81,7 +81,7 @@ def write_config_file(configdata):
     other = configdata['other']
     config.add_section('other')
     config.set('other', '# other options')
-    config.set('other', 'ignore_duplicates', other['ignore_duplicates'])
+    config.set('other', 'ignore_duplicates', str(other['ignore_duplicates']))
     
     with open('backgrounder.ini', 'w') as file:
         config.write(file)

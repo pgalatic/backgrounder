@@ -7,12 +7,13 @@ import os
 import pprint
 import loader
 import random
-import hashlib
 import logging
 import datetime
 import requests
+from PIL import Image
 from data import Data
 from reddit import Reddit
+from PIL import ImageChops
 
 ENFORCE_RUNTIME_LIMIT = True
 
@@ -28,30 +29,44 @@ def get_logger():
 
     return logger
     
-def is_duplicate(image_name, filepath):
-    """Checks if the given image is a duplicate of any existing image."""
-    BLOCKSIZE = 65536
-    hasher = hashlib.md5()
+def is_duplicate(image_path, filepath):
+    """
+    Checks if the given image is a duplicate of any existing image in the 
+    specified directory (normally where the user has chosen backgrounds to be 
+    stored).
     
-    with open(image_path) as img_x:
-        buf = img_x.read(BLOCKSIZE)
-            while len(buf) > 0:
-                hasher.update(buf)
-                buf = img_x.read(BLOCKSIZE)
+    Arguments:
+        image_path -- the absolute path to the image in question
+        filepath -- the directory to inspect
+    Returns:
+        True -- the image specified by image_path is a duplicate
+        False -- the image specified by image_path isn't a duplicate
+    """
+    BLOCKSIZE = 65536
         
-    img_xhex = hasher.hexdigest()
+    im1 = Image.open(image_path)
     
     for filename in os.listdir(filepath):
         if filename.endswith('.png') or filename.endswith('.jpg'):
-            with open(filename) as img_y:
-                buf = img_y.read(BLOCKSIZE)
-                    while len(buf) > 0:
-                        hasher.update(buf)
-                        buf = img_y.read(BLOCKSIZE)
+            full_path = filepath + '/' + filename
+            if full_path == image_path:
+                # don't compare the image to itself
+                continue
             
-            if hasher.hexdigest() == img_xhex:
-                return True
-    
+            im2 = Image.open(full_path)
+            
+            try:
+                diff = ImageChops.difference(im1, im2).getbbox()
+                if not diff:
+                    # boundary box doesn't exist -- images are identical
+                    return True
+                
+            except ValueError:
+                # images aren't of the same dimension
+                continue
+            
+            
+            
     return False
 
 def save_image(combined_path, image_url, dat):
