@@ -63,8 +63,14 @@ class Config_GUI():
                             other_options_frame, 
                             text='Ignore duplicates', 
                             variable=duplicates_var
-                        )
-        duplicates_box.grid(row=0, column=0, sticky=tk.W)
+        ).grid(row=0, column=0, sticky=tk.W)
+        
+        imgur_var = tk.IntVar()
+        imgur_box = tk.Checkbutton(
+                        other_options_frame,
+                        text='Download entire imgur gallery',
+                        variable=imgur_var
+        ).grid(row=1, column=0, sticky=tk.W)
 
         # Close button
 
@@ -77,6 +83,7 @@ class Config_GUI():
         # GUI elements
         self.root = root
         self.duplicates_var = duplicates_var
+        self.imgur_var = imgur_var
 
         # Internal state
         self.installation_completed = False
@@ -134,6 +141,7 @@ class Config_GUI():
         """Returnsa dict -- describes extraneous checkbox options"""
         dict = {}
         dict['ignore_duplicates'] = self.duplicates_var.get()
+        dict['download_gallery'] = self.imgur_var.get()
         
         return dict
 

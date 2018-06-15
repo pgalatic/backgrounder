@@ -14,6 +14,7 @@ from PIL import Image
 from data import Data
 from reddit import Reddit
 from PIL import ImageChops
+from imgur_album_downloader.imguralbum import ImgurAlbumDownloader
 
 ENFORCE_RUNTIME_LIMIT = True
 
@@ -65,25 +66,53 @@ def is_duplicate(image_path, filepath):
                 # images aren't of the same dimension
                 continue
             
-            
-            
     return False
 
-def save_image(combined_path, image_url, dat):
+def download_imgur(url, dat):
+    """
+    Utility for downloading imgur galleries, which have to be handled 
+    differently than just a single image.
+    
+    Arguments:
+        url -- the url of the imgur gallery
+    Returns:
+        True -- operation successfully completed
+        False -- there was an error
+    """
+    # if ignoring duplicates, don't download from the same gallery twice
+    if dat.configdata['other']['ignore_duplicates'] == 1:
+        if url in dat.userdata['imgur_galleries']:
+            return False
+    
+    downloader = ImgurAlbumDownloader(url)
+    path = dat.configdata['filepath']
+    idx = random.randint(1, downloader.num_images() + 1)
+
+    if dat.configdata['other']['download_gallery'] == 0:
+        # download a random image
+        downloader.save(path, idx)
+    else:
+        # download entire gallery
+        downloader.save(path)
+    
+    dat.userdata['imgur_galleries'].add(url)
+    
+    return True
+    
+def download_image(id, url, dat):
     """
     Retrieves an image and stores it to disk.
 
     Arguments:
-    combined_path -- The path containing the pwd of the image as well as its
-        filename
-    image_url -- The URL of the image to retrieve
+        id -- The next id to use for an image to download
+        url -- The URL of the image to retrieve
     
     Returns:
     True -- image was downloaded
     False  -- image was not downloaded
     """
     with open(combined_path, 'wb') as handle:
-        response = requests.get(image_url, stream=True)
+        response = requests.get(url, stream=True)
 
         if not response.ok:
             print(response)
@@ -115,10 +144,10 @@ def combine_paths(dat, increment=0):
     in the save data. This is to avoid overwriting images.
 
     Arguments:
-    dat -- save data
-    increment -- for saving multiple images, allows the id to be increased
+        dat -- save data
+        increment -- for saving multiple images, allows the id to be increased
     Returns:
-    a viable path for the new image
+        a viable path for the new image
     """
     filepath = dat.configdata['filepath']
     image_id = dat.userdata['image_id'] + increment
@@ -155,7 +184,14 @@ def rand_top_post(subreddits):
     subreddit = subreddits[random.randint(0, len(subreddits) - 1)]
     for submission in subreddit.top(time_filter='day', limit=1):
         tops.append(submission)
-    return tops
+    
+    if tops == []:
+        # subreddit isn't active enough -- no 'top' post
+        # try something else
+        for submission in subreddit.hot(limit=3):
+            tops.append(submission)
+    
+    return [tops[2]]
 
 def grab_images(dat):
     """
@@ -165,7 +201,7 @@ def grab_images(dat):
     user-specified location.
 
     Arguments:
-    dat -- save data
+        dat -- save data
     """
     # TODO : Grab images by resolution / resolution minimum
 
@@ -185,25 +221,30 @@ def grab_images(dat):
         raise Exception('Bad config data (post save method)')
 
     increment = 0
-    # TODO : assumes that top post isn't a gallery (fails if it is)
     for post in top_posts: # TODO : assumes that each post has a media element
         permalink = post.permalink
-        image_url = post.url
-
+        url = post.url
+        
         combined_path = combine_paths(dat, increment)
         increment += 1
-
-        successful = save_image(combined_path, image_url, dat)            
-
-        message = str(datetime.datetime.now()) + ': image saved --' +     \
-                  '\n\tlocation: \t' + combined_path +                    \
-                  '\n\tsource: \t' + str(permalink) +                     \
-                  '\n\tresult: '
         
+        # determine if url is direct image link or link to imgur gallery
+        if 'imgur' in url:
+            successful = download_imgur(url, dat)
+            message = str(datetime.datetime.now()) + ': gallery saved --' +   \
+                        '\n\tsource: \t' + str(permalink) + '\n\tresult: '
+                              
+        else:
+            successful = download_image(combined_path, url, dat)
+            message = str(datetime.datetime.now()) + ': image saved --' +     \
+                        '\n\tsource: \t' + str(permalink) + '\n\tresult: ' +  \
+                        '\n\tlocation: \t' + combined_path
+                    
+        # TODO if download is unsuccessful, try something else
         if successful:
             message += 'SUCCESSFULLY SAVED\n'
         else:
-            message += 'DELETED -- DUPLICATE\n'
+            message += 'UNSUCCESSFUL -- DUPLICATE\n'
 
         log.info(message)
 

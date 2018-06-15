@@ -82,6 +82,7 @@ def write_config_file(configdata):
     config.add_section('other')
     config.set('other', '# other options')
     config.set('other', 'ignore_duplicates', str(other['ignore_duplicates']))
+    config.set('other', 'download_gallery', str(other['download_gallery']))
     
     with open('backgrounder.ini', 'w') as file:
         config.write(file)
@@ -100,6 +101,7 @@ def read_config_file():
     
     configdata['other'] = {}
     configdata['other']['ignore_duplicates'] = int(config['other']['ignore_duplicates'])
+    configdata['other']['download_gallery'] = int(config['other']['download_gallery'])
     
     return configdata
     
@@ -119,6 +121,7 @@ def install():
     
     dat.userdata['image_id'] = 0
     dat.userdata['last_run_datetime'] = datetime.datetime.now()
+    dat.userdata['imgur_galleries'] = set()
     
     create_shortcut()
     
