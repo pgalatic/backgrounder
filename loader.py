@@ -4,6 +4,7 @@
 #
 
 import os
+import shutil
 import pickle
 import datetime
 import configparser
@@ -12,9 +13,28 @@ from ast import literal_eval
 from gui import config_gui
 from win32com.client import Dispatch
 
-VERSION = '0.5'
+VERSION = '0.6'
+MIN_RUN_TIME = 300 # min five minutes between runs
 
-def create_shortcut():
+def copy_to_install_dir(dat):
+    cwd = os.getcwd()
+    dst = dat.configdata['path']['install']
+    for filename in os.listdir(cwd):
+        try:
+            shutil.copyfile(cwd + '\\' + filename, dst + '\\' + filename)
+        except:
+            pass
+
+def move_to_install_dir(dat):
+    cwd = os.getcwd()
+    dst = dat.configdata['path']['install']
+    for filename in os.listdir(cwd):
+        try:
+            os.rename(cwd + '\\' + filename, dst + '\\' + filename)
+        except:
+            pass
+
+def create_shortcut(dat):
     """
     Creates a shortcut for the program.
     
@@ -31,7 +51,8 @@ def create_shortcut():
     
     # Create shortcut to script
     shell = Dispatch('WScript.Shell')
-    execpath = os.getcwd() + '\\backgrounder_v' + VERSION + '.exe' # path to script
+    # execpath = dat.configdata['path']['install'] + '\\backgrounder_v' + VERSION + '.exe' # path to script
+    execpath = os.getcwd() + '\\backgrounder_v' + VERSION + '.exe'
     shortcut = shell.CreateShortcut(startpath + '\\backgrounder_v' + VERSION + '.lnk')
     shortcut.Targetpath = execpath
     shortcut.WorkingDirectory = os.getcwd()
@@ -49,10 +70,11 @@ def write_config_file(configdata):
     
     # file path preferences
     
-    filepath = configdata['filepath']
-    config.add_section('filepath')
-    config.set('filepath', '# where images will be saved')
-    config.set('filepath', 'filepath', filepath)
+    path = configdata['path']
+    config.add_section('path')
+    config.set('path', '# path for install, image directory')
+    config.set('path', 'install', str(path['install']))
+    config.set('path', 'image', str(path['image']))
     
     # subreddit preferences
     
@@ -84,20 +106,27 @@ def write_config_file(configdata):
     config.set('other', 'ignore_duplicates', str(other['ignore_duplicates']))
     config.set('other', 'download_gallery', str(other['download_gallery']))
     
-    with open('backgrounder.ini', 'w') as file:
+    # with open(configdata['path']['install'] + '\\backgrounder.ini', 'w') as file:
+    with open ('backgrounder.ini', 'w') as file:
         config.write(file)
 
 def read_config_file():
     """Reads the backgrounder.ini file and imports settings from it."""
+    # TODO : validate config file
+    
+    MIN_RUN_TIME = 300 # min five minutes between runs
+    
     config = configparser.ConfigParser(allow_no_value=True)
     configdata = {}
     
     config.read('backgrounder.ini')
     
-    configdata['filepath'] = config['filepath']['filepath']
+    configdata['path'] = {}
+    configdata['path']['install'] = config['path']['install']
+    configdata['path']['image'] = config['path']['image']
     configdata['subreddits'] = literal_eval(config['subreddits']['subreddits'])
     configdata['postsave'] = int(config['postsave']['method'])
-    configdata['timing'] = int(config['timing']['seconds'])
+    configdata['timing'] = max(int(config['timing']['seconds']), MIN_RUN_TIME)
     
     configdata['other'] = {}
     configdata['other']['ignore_duplicates'] = int(config['other']['ignore_duplicates'])
@@ -105,7 +134,7 @@ def read_config_file():
     
     return configdata
     
-def install():
+def install(DEBUG):
     """Runs installation procedures."""
     dat = Data()
     GUI = config_gui.Config_GUI()
@@ -117,23 +146,28 @@ def install():
         print('WARN: Installation could not successfully validate. Aborting.')
         return None
     
+    # TODO: Move to install dir, need a better way though
+    # if DEBUG:
+    #     copy_to_install_dir(dat)
+    # else:
+    #     move_to_install_dir(dat)
+    
     write_config_file(dat.configdata)
     
     dat.userdata['image_id'] = 0
-    dat.userdata['last_run_datetime'] = datetime.datetime.now()
     dat.userdata['imgur_galleries'] = set()
     
-    create_shortcut()
+    create_shortcut(dat) # TODO : make this optional
     
     return dat
 
-def read_data():
+def read_data(DEBUG):
     """
     Reads and returns save data. If no save data exists, runs and returns the
     result of the installation procedure.
     
     return: a Dat object representing all user save and configuration data
-    """
+    """    
     if os.path.isfile('data.pkl'):
         with open('data.pkl', 'rb') as input:
             dat = pickle.load(input)
@@ -145,7 +179,7 @@ def read_data():
                 write_config_file(dat.configdata)
             return dat
     else:
-        return install()
+        return install(DEBUG)
 
 def write_data(dat):
     """Writes save data to disk. Overwrites any existing data."""

@@ -18,30 +18,49 @@ class Config_Path():
     Used to get data path from user.
     """
 
-    def __init__(self, frame):
+    def __init__(self, frame_in):
 
-        self.frame = tk.Frame(frame)
+        self.frame = tk.Frame(frame_in)
         self.frame.pack(fill=tk.X, pady=PADY)
+        frame = self.frame
 
-        self.input = tk.StringVar(self.frame)
+        self.install_input = tk.StringVar(frame)
+        self.image_input = tk.StringVar(frame)
+        
+        install_lbl = tk.Label(
+            frame, text='[IN PROGRESS] Select an installation directory.')
+        install_lbl.grid(row=0, column=0, sticky=tk.W)
+        
+        install_txt = tk.Entry(
+            frame, textvariable=self.install_input, width=50)
+        install_txt.grid(row=1, column=0, sticky=tk.W)
 
-        self.lbl = tk.Label(
-            self.frame, text='Select a folder to store images in.')
-        self.lbl.grid(row=0, column=0, sticky=tk.W)
+        image_lbl = tk.Label(
+            frame, text='Select a folder to store images in.')
+        image_lbl.grid(row=2, column=0, sticky=tk.W)
 
-        self.txt = tk.Entry(
-            self.frame, textvariable=self.input, width=50)
-        self.txt.grid(row=1, column=0, sticky=tk.W)
+        image_txt = tk.Entry(
+            frame, textvariable=self.image_input, width=50)
+        image_txt.grid(row=3, column=0, sticky=tk.W)
 
-        self.btn = tk.Button(
-            self.frame,
+        dir_installer = lambda: self.request_directory(install_txt)
+        dir_image = lambda: self.request_directory(image_txt)
+        
+        tk.Button(
+            frame,
             text='...',
             width=5,
-            command=lambda: self.request_directory()
-        )
-        self.btn.grid(row=1, column=1, sticky=tk.E, padx=PADX)
-
-    def request_directory(self):
+            command=dir_installer
+        ).grid(row=1, column=1, sticky=tk.E, padx=PADX)
+        
+        tk.Button(
+            frame,
+            text='...',
+            width=5,
+            command=dir_image
+        ).grid(row=3, column=1, sticky=tk.E, padx=PADX)
+        
+    def request_directory(self, txt):
         """
         Displays a prompt for the user to select a directory. Once selected,
         that information is stored in an Entry.
@@ -52,9 +71,12 @@ class Config_Path():
             title='Please select a folder:'
         )
 
-        self.txt.delete(0, 'end')
+        txt.delete(0, 'end')
 
-        self.txt.insert(0, filepath)
+        txt.insert(0, filepath)
 
     def get_path_input(self):
-        return self.input.get()
+        dict = {}
+        dict['install'] = self.install_input.get()
+        dict['image'] = self.image_input.get()
+        return dict

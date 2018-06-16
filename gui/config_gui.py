@@ -89,6 +89,8 @@ class Config_GUI():
         self.installation_completed = False
 
     def convert_timing_to_seconds(self, dict):
+        MIN_RUN_TIME = 300 # min five minutes between runs
+    
         """Converts user timing pref dict into an amount of seconds"""
         if dict['unit'] == 'SECONDS':
             unit = 1
@@ -99,7 +101,7 @@ class Config_GUI():
         else:
             raise Exception('Unit choice not recognized: ' + timing['unit'])
             
-        return int(dict['value']) * unit    
+        return max(int(dict['value']) * unit, MIN_RUN_TIME)  
     
     def activate(self):
         """
@@ -113,7 +115,7 @@ class Config_GUI():
         
         timing_dict = self.get_timing_pref()
 
-        configdata['filepath'] = self.get_filepath_input()
+        configdata['path'] = self.get_path_input()
         configdata['subreddits'] = self.get_subreddit_input()
         configdata['postsave'] = self.get_postsave_input()
         configdata['timing'] = self.convert_timing_to_seconds(timing_dict)
@@ -121,7 +123,7 @@ class Config_GUI():
 
         return configdata
 
-    def get_filepath_input(self):
+    def get_path_input(self):
         """Returns a string -- where the user chose to store their images."""
         return self.config_path.get_path_input()
 
@@ -159,9 +161,13 @@ class Config_GUI():
         postsave_valid = False
         timing_valid = False
 
-        # is the chosen filepath a valid directory?
-        filepath = self.get_filepath_input()
-        if os.path.isdir(filepath):
+        # are the designated paths valid directories?
+        path = self.get_path_input()
+        if not os.path.isdir(path['image']):
+            error = 'Image'
+        # elif not os.path.isdir(path['install']):
+        #     error = 'Installation'
+        else:
             filepath_valid = True
 
         # was at least one subreddit chosen?
@@ -182,7 +188,7 @@ class Config_GUI():
         # warn user
         if not filepath_valid:
             tk.messagebox.showinfo(
-                'Warning', 'Chosen filepath is not a valid directory. Please choose a new filepath.')
+                'Warning', '%s filepath is invalid. Please choose a new filepath.' % (error))
         elif not subreddits_valid:
             tk.messagebox.showinfo(
                 'Warning', 'Please choose at least one subreddit.')
