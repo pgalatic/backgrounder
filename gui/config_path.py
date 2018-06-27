@@ -77,6 +77,6 @@ class Config_Path():
 
     def get_path_input(self):
         dict = {}
-        dict['install'] = self.install_input.get()
-        dict['image'] = self.image_input.get()
+        dict['install'] = str(self.install_input.get())
+        dict['image'] = str(self.image_input.get())
         return dict

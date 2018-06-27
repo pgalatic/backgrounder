@@ -11,6 +11,7 @@ import configparser
 from data import Data
 from ast import literal_eval
 from gui import config_gui
+from tkinter import messagebox
 from win32com.client import Dispatch
 
 VERSION = '0.6'
@@ -110,9 +111,69 @@ def write_config_file(configdata):
     with open ('backgrounder.ini', 'w') as file:
         config.write(file)
 
+def validate_config(configdata):
+    """
+    Takes configdata and returns a str:bool dict that explains which items are
+    valid and which are not.
+    """
+    dict = {}
+    dict['path'] = False
+    dict['subreddits'] = False
+    dict['postsave'] = False
+    dict['timing'] = False
+    dict['other'] = True
+
+    # are the designated paths valid directories?
+    path = configdata['path']
+    if not os.path.isdir(path['image']):
+        error = 'Image'
+    # elif not os.path.isdir(path['install']):
+    #     error = 'Installation'
+    else:
+        dict['path'] = True
+
+    # was at least one subreddit chosen?
+    subreddits = configdata['subreddits']
+    try:
+        list = literal_eval(subreddits)
+    
+        if len(list) > 0:
+            dict['subreddits'] = True
+    except (ValueError, SyntaxError) as e:
+        pass # string can't parse as a list
+
+    # was a valid postsave setting selected?
+    postsave = configdata['postsave']
+    if postsave.isdigit() and 0 <= int(postsave) <= 2:
+        dict['postsave'] = True
+
+    # is the timing an integer with a valid accompanying unit?
+    timing = configdata['timing']
+    if timing.isdigit(): # -1 sentinel val for conversion error
+        dict['timing'] = True
+    
+    # make sure other options are valid
+    other = configdata['other']
+    for key, val in other.items():
+        if not (val == '0' or val == '1'):
+            dict['other'] = False
+            
+    return dict
+
+def process_configdata(configdata):
+    """
+    Post-processes configdata to bring it into the form the program expects.
+    Should only be done once the configdata is validated.
+    """
+    configdata['subreddits'] = literal_eval(configdata['subreddits'])
+    configdata['postsave'] = int(configdata['postsave'])
+    configdata['other']['ignore_duplicates'] = int(configdata['other']['ignore_duplicates'])
+    configdata['other']['download_gallery'] = int(configdata['other']['download_gallery'])
+    
+    return configdata
+
 def read_config_file():
     """Reads the backgrounder.ini file and imports settings from it."""
-    # TODO : validate config file
     
     MIN_RUN_TIME = 300 # min five minutes between runs
     
@@ -124,14 +185,23 @@ def read_config_file():
     configdata['path'] = {}
     configdata['path']['install'] = config['path']['install']
     configdata['path']['image'] = config['path']['image']
-    configdata['subreddits'] = literal_eval(config['subreddits']['subreddits'])
-    configdata['postsave'] = int(config['postsave']['method'])
-    configdata['timing'] = max(int(config['timing']['seconds']), MIN_RUN_TIME)
-    
+    configdata['subreddits'] = config['subreddits']['subreddits']
+    configdata['postsave'] = config['postsave']['method']
+    configdata['timing'] = config['timing']['seconds']
     configdata['other'] = {}
-    configdata['other']['ignore_duplicates'] = int(config['other']['ignore_duplicates'])
-    configdata['other']['download_gallery'] = int(config['other']['download_gallery'])
+    configdata['other']['ignore_duplicates'] = config['other']['ignore_duplicates']
+    configdata['other']['download_gallery'] = config['other']['download_gallery']
     
+    # validate user-entered config
+    valid_dict = validate_config(configdata)
+    for key, val in valid_dict.items():
+        if val is False:
+            messagebox.showinfo('Warning', 'There was an error reading backgrounder.ini.\n\nPlease delete your data.pkl file and rerun the program.'
+                % (key))
+            return None
+    
+    process_configdata(configdata)
+        
     return configdata
     
 def install(DEBUG):
@@ -140,6 +210,7 @@ def install(DEBUG):
     GUI = config_gui.Config_GUI()
     
     dat.configdata = GUI.activate()
+    process_configdata(dat.configdata)
     
     # check to make sure the user didn't exit the installer manually
     if not GUI.installation_completed:
@@ -172,10 +243,16 @@ def read_data(DEBUG):
         with open('data.pkl', 'rb') as input:
             dat = pickle.load(input)
             # use user config file if that file exists
-            configdata = read_config_file()
-            if configdata:
-                dat.configdata = configdata
+            if os.path.isfile('backgrounder.ini'):
+                configdata = read_config_file()
+                if configdata:
+                    # config was found and is valid
+                    dat.configdata = configdata
+                else:
+                    # config was found, but is invalid
+                    quit() # FIXME getting some funky bugs when I try to rerun the installer
             else:
+                # config was not found, write previous data
                 write_config_file(dat.configdata)
             return dat
     else:

@@ -54,5 +54,5 @@ class Config_Save():
         ).grid(row=3, column=0, sticky=tk.W)
 
     def get_save_pref(self):
-        return self.var.get()
+        return str(self.var.get())
 

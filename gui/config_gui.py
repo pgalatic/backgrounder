@@ -3,7 +3,11 @@
 # class for any elements involving graphical user interface
 #
 
+# extra junk to make sure we can import from a parent directory
+from os import sys, path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import os
+import loader
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
@@ -75,7 +79,7 @@ class Config_GUI():
         # Close button
 
         close_btn = tk.Button(botframe, text='Finish',
-                              command=lambda: self.validate_input())
+                              command=lambda: self.validate())
         close_btn.grid(row=0, column=1, pady=PADY)
 
         # Store relevant state info
@@ -87,21 +91,6 @@ class Config_GUI():
 
         # Internal state
         self.installation_completed = False
-
-    def convert_timing_to_seconds(self, dict):
-        MIN_RUN_TIME = 300 # min five minutes between runs
-    
-        """Converts user timing pref dict into an amount of seconds"""
-        if dict['unit'] == 'SECONDS':
-            unit = 1
-        elif dict['unit'] == 'HOURS':
-            unit = 3600
-        elif dict['unit'] == 'DAYS':
-            unit = 86400
-        else:
-            raise Exception('Unit choice not recognized: ' + timing['unit'])
-            
-        return max(int(dict['value']) * unit, MIN_RUN_TIME)  
     
     def activate(self):
         """
@@ -109,19 +98,9 @@ class Config_GUI():
 
         return: the configuration data the user submitted
         """
-        configdata = {}
-
         self.root.mainloop()
         
-        timing_dict = self.get_timing_pref()
-
-        configdata['path'] = self.get_path_input()
-        configdata['subreddits'] = self.get_subreddit_input()
-        configdata['postsave'] = self.get_postsave_input()
-        configdata['timing'] = self.convert_timing_to_seconds(timing_dict)
-        configdata['other'] = self.get_other_options()
-
-        return configdata
+        return self.get_all_data()
 
     def get_path_input(self):
         """Returns a string -- where the user chose to store their images."""
@@ -142,12 +121,21 @@ class Config_GUI():
     def get_other_options(self):
         """Returnsa dict -- describes extraneous checkbox options"""
         dict = {}
-        dict['ignore_duplicates'] = self.duplicates_var.get()
-        dict['download_gallery'] = self.imgur_var.get()
+        dict['ignore_duplicates'] = str(self.duplicates_var.get())
+        dict['download_gallery'] = str(self.imgur_var.get())
         
         return dict
 
-    def validate_input(self):
+    def get_all_data(self):
+        data = {}
+        data['path'] = self.get_path_input()
+        data['subreddits'] = self.get_subreddit_input()
+        data['postsave'] = self.get_postsave_input()
+        data['timing'] = self.get_timing_pref()
+        data['other'] = self.get_other_options()
+        return data
+        
+    def validate(self):
         """
         Validates that the user's input was legitimate.
 
@@ -155,49 +143,25 @@ class Config_GUI():
         allowing the installer to progress. If all the data is valid, it notes
         that in the state of the GUI.
         """
-        # TODO: Validate config file
-        filepath_valid = False
-        subreddits_valid = False
-        postsave_valid = False
-        timing_valid = False
-
-        # are the designated paths valid directories?
-        path = self.get_path_input()
-        if not os.path.isdir(path['image']):
-            error = 'Image'
-        # elif not os.path.isdir(path['install']):
-        #     error = 'Installation'
-        else:
-            filepath_valid = True
-
-        # was at least one subreddit chosen?
-        subreddits = self.get_subreddit_input()
-        if len(subreddits) > 0:
-            subreddits_valid = True
-
-        # was a postsave setting selected?
-        postsave = self.get_postsave_input()
-        if postsave >= 0:
-            postsave_valid = True
-
-        # is the entered time an integer?
-        timing = self.get_timing_pref()
-        if timing['value'].isdigit():
-            timing_valid = True
+        configdata = self.get_all_data()
+        valid_dict = loader.validate_config(configdata)
 
         # warn user
-        if not filepath_valid:
+        if not valid_dict['path']:
             tk.messagebox.showinfo(
-                'Warning', '%s filepath is invalid. Please choose a new filepath.' % (error))
-        elif not subreddits_valid:
+                'Warning', 'Filepath is invalid. Please choose a new filepath.')
+        elif not valid_dict['subreddits']:
             tk.messagebox.showinfo(
                 'Warning', 'Please choose at least one subreddit.')
-        elif not postsave_valid:
+        elif not valid_dict['postsave']:
             tk.messagebox.showinfo(
                 'Warning', 'Please choose a method by which to have your posts saved.')
-        elif not timing_valid:
+        elif not valid_dict['timing']:
             tk.messagebox.showinfo(
                 'Warning', 'Please enter an integer in the \"time between runs\" window.')
+        elif not valid_dict['other']:
+            tk.messagebox.showinfo(
+                'Warning', 'There was an error in your \'other\' section. Please contact the app developer.')
         else:
             self.installation_completed = True
             self.root.destroy()

@@ -228,15 +228,16 @@ def grab_images(dat):
     subreddits = [reddit.subreddit(name) for name in subreddit_names]
     log = get_logger() # TODO : make accessible to other functions?
 
-    # use different method to save image depending on user's stated preference
-    if dat.configdata['postsave'] == 0:
+    # use different method to save image depending on user's stated preferencedata['subreddits']
+    method = dat.configdata['postsave']
+    if method == 0:
         top_posts = topmost_post(subreddits)
-    elif dat.configdata['postsave'] == 1:
+    elif method == 1:
         top_posts = all_top_posts(subreddits)
-    elif dat.configdata['postsave'] == 2:
+    elif method == 2:
         top_posts = rand_top_post(subreddits)
     else:
-        raise Exception('Bad config data (post save method)')
+        raise Exception('Bad config data (post save method): %s' % (str(method)))
 
     increment = 0
     for post in top_posts: # TODO : assumes that each post has a media element

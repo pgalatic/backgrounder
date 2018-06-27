@@ -147,4 +147,4 @@ class Config_Subs():
                 if name not in subreddits:
                     subreddits.append(name)
 
-        return subreddits
+        return str(subreddits)

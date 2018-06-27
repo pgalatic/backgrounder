@@ -40,10 +40,32 @@ class Config_Timing():
         self.dropdown = tk.OptionMenu(self.frame, self.choice, *CHOICES)
         self.dropdown.grid(row=1, column=1, sticky=tk.W)
 
-    def get_timing_pref(self):
-        """Returns a dict describing the user's chosen options."""
-        value = self.value.get()
-        unit = self.choice.get()
+    def convert(self, dict):
+        """Converts user timing pref dict into an int amount of seconds"""
+        MIN_RUN_TIME = 300 # min five minutes between runs
         
-        return {'value': value, 'unit': unit}
+        try:
+            int(dict['value'])
+        except ValueError:
+            return None # sentinel value -- will be picked up later
+
+        if dict['unit'] == 'SECONDS':
+            unit = 1
+        elif dict['unit'] == 'HOURS':
+            unit = 3600
+        elif dict['unit'] == 'DAYS':
+            unit = 86400
+        else:
+            raise Exception('Unit choice not recognized: ' + timing['unit'])
+        
+        return max(int(dict['value']) * unit, MIN_RUN_TIME)
+        
+    def get_timing_pref(self):
+        """
+        Returns a string describing the user's chosen options, in seconds.
+        """
+        value = str(self.value.get())
+        unit = str(self.choice.get())
+        
+        return str(self.convert({'value': value, 'unit': unit}))
 
