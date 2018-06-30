@@ -1,6 +1,6 @@
 # backgrounder
-goal: grabs the top-rated background from reddit (achieved!)
-goal: run periodically as a windows service (in progress)
+* goal: grabs the top-rated background from reddit (achieved!)
+* goal: run periodically as a windows service (in progress)
 
 instructions to install:
 1) download the installer from the /dist/ folder
