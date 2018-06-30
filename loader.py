@@ -14,26 +14,8 @@ from gui import config_gui
 from tkinter import messagebox
 from win32com.client import Dispatch
 
-VERSION = '0.6'
+VERSION = '0.7'
 MIN_RUN_TIME = 300 # min five minutes between runs
-
-def copy_to_install_dir(dat):
-    cwd = os.getcwd()
-    dst = dat.configdata['path']['install']
-    for filename in os.listdir(cwd):
-        try:
-            shutil.copyfile(cwd + '\\' + filename, dst + '\\' + filename)
-        except:
-            pass
-
-def move_to_install_dir(dat):
-    cwd = os.getcwd()
-    dst = dat.configdata['path']['install']
-    for filename in os.listdir(cwd):
-        try:
-            os.rename(cwd + '\\' + filename, dst + '\\' + filename)
-        except:
-            pass
 
 def create_shortcut(dat):
     """
@@ -52,7 +34,6 @@ def create_shortcut(dat):
     
     # Create shortcut to script
     shell = Dispatch('WScript.Shell')
-    # execpath = dat.configdata['path']['install'] + '\\backgrounder_v' + VERSION + '.exe' # path to script
     execpath = os.getcwd() + '\\backgrounder_v' + VERSION + '.exe'
     shortcut = shell.CreateShortcut(startpath + '\\backgrounder_v' + VERSION + '.lnk')
     shortcut.Targetpath = execpath
@@ -73,8 +54,7 @@ def write_config_file(configdata):
     
     path = configdata['path']
     config.add_section('path')
-    config.set('path', '# path for install, image directory')
-    config.set('path', 'install', str(path['install']))
+    config.set('path', '# path to image directory')
     config.set('path', 'image', str(path['image']))
     
     # subreddit preferences
@@ -107,7 +87,6 @@ def write_config_file(configdata):
     config.set('other', 'ignore_duplicates', str(other['ignore_duplicates']))
     config.set('other', 'download_gallery', str(other['download_gallery']))
     
-    # with open(configdata['path']['install'] + '\\backgrounder.ini', 'w') as file:
     with open ('backgrounder.ini', 'w') as file:
         config.write(file)
 
@@ -125,11 +104,7 @@ def validate_config(configdata):
 
     # are the designated paths valid directories?
     path = configdata['path']
-    if not os.path.isdir(path['image']):
-        error = 'Image'
-    # elif not os.path.isdir(path['install']):
-    #     error = 'Installation'
-    else:
+    if os.path.isdir(path['image']):
         dict['path'] = True
 
     # was at least one subreddit chosen?
@@ -183,7 +158,6 @@ def read_config_file():
     config.read('backgrounder.ini')
     
     configdata['path'] = {}
-    configdata['path']['install'] = config['path']['install']
     configdata['path']['image'] = config['path']['image']
     configdata['subreddits'] = config['subreddits']['subreddits']
     configdata['postsave'] = config['postsave']['method']

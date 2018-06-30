@@ -4,5 +4,6 @@ build/
 *.spec
 *.log
 *.ini
-backgrounder.exe
+*.sed
+backgrounder*.exe
 oauth_info.py

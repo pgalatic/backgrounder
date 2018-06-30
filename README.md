@@ -1,8 +1,9 @@
 # backgrounder
-goal: grabs the top-rated background from reddit
-goal: run periodically as a windows service
+goal: grabs the top-rated background from reddit (achieved!)
+goal: run periodically as a windows service (in progress)
 
 instructions to install:
-1) download the contents of the /dist/ folder
-2) run the batch script (install.bat) and follow the installer's instructions
-3) raise an issue if you find any bugs!
+1) download the installer from the /dist/ folder
+2) run the installer and follow its instructions
+3) run the program from the directory you installed it and follow its instructions
+4) raise an issue if you find any bugs!
