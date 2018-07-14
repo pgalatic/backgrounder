@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from gui import config_subs
+from gui.tooltip import Tooltip
 
 PADX = 20
 PADY = 10
@@ -32,26 +33,37 @@ class Config_Save():
 
         self.var.set(-1)
 
-        tk.Radiobutton(
+        save1 = tk.Radiobutton(
             self.frame,
-            text='Select top post from all selected subreddits',
+            text='Select topmost post of all selected subreddits',
             variable=self.var,
             value=0
-        ).grid(row=1, column=0, sticky=tk.W)
+        )
+        save1.grid(row=1, column=0, sticky=tk.W)
+        Tooltip(save1, \
+            'This will compare the top post of each of your selections and '
+            'download the highest-scoring post among them.')
 
-        tk.Radiobutton(
+        save2 = tk.Radiobutton(
             self.frame,
             text='Select all top posts from all selected subreddits',
             variable=self.var,
             value=1
-        ).grid(row=2, column=0, sticky=tk.W)
+        )
+        save2.grid(row=2, column=0, sticky=tk.W)
+        Tooltip(save2, \
+            'This will download one image from each of your selections.')
 
-        tk.Radiobutton(
+        save3 = tk.Radiobutton(
             self.frame,
             text='Select top post from a random subreddit among those selected',
             variable=self.var,
             value=2
-        ).grid(row=3, column=0, sticky=tk.W)
+        )
+        save3.grid(row=3, column=0, sticky=tk.W)
+        Tooltip(save3, \
+            'This will choose a random subreddit among your selections and '
+            'download its top post.')
 
     def get_save_pref(self):
         return str(self.var.get())

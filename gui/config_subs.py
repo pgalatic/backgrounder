@@ -7,6 +7,7 @@
 from os import sys, path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from reddit import Reddit
+from gui.tooltip import Tooltip
 
 import tkinter as tk
 
@@ -75,6 +76,9 @@ class Config_Subs():
         customsub_btn = tk.Button(
             customsub_frame, text='Add', width=10, command=lambda: self.add_custom_subreddit())
         customsub_btn.grid(row=1, column=1, sticky=tk.E)
+        Tooltip(customsub_btn, \
+            'WARNING: This feature is in beta, and has not been tested for '
+            'stability. Use at your own risk.')
 
         # Store relevant state
 
@@ -88,7 +92,10 @@ class Config_Subs():
         self.customsubs = {}
 
     def add_custom_subreddit(self):
-        """TODO"""
+        """
+        Adds a custom subreddit to the list by evaluating whatever name the 
+        user entered.
+        """
 
         # TODO : Make sure the subreddit only has image posts
 

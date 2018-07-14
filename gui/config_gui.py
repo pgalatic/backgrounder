@@ -9,16 +9,16 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import os
 import loader
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import filedialog
 from gui import config_path
 from gui import config_subs
 from gui import config_save
 from gui import config_timing
+from gui.tooltip import Tooltip
+from tkinter import messagebox
+from tkinter import filedialog
 
 PADX = 20
 PADY = 10
-
 
 class Config_GUI():
     """
@@ -67,14 +67,23 @@ class Config_GUI():
                             other_options_frame, 
                             text='Ignore duplicates', 
                             variable=duplicates_var
-        ).grid(row=0, column=0, sticky=tk.W)
+        )
+        duplicates_box.grid(row=0, column=0, sticky=tk.W)
+        Tooltip(duplicates_box, \
+            'If selected, the program will not download the same image more'
+            'than once. Attempts to download duplicates will be logged.')
         
         imgur_var = tk.IntVar()
         imgur_box = tk.Checkbutton(
                         other_options_frame,
                         text='Download entire imgur gallery',
                         variable=imgur_var
-        ).grid(row=1, column=0, sticky=tk.W)
+        )
+        imgur_box.grid(row=1, column=0, sticky=tk.W)
+        Tooltip(imgur_box, \
+            'If selected, if the top post happens to be an imgur album, the '
+            'program will download the entire imgur album. This could result '
+            'in the download of dozens of images, so be careful.')
 
         # Close button
 

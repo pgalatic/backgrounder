@@ -8,11 +8,13 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from gui import config_subs
+from gui.tooltip import Tooltip
 
 PADX = 20
 PADY = 10
 
 CHOICES = ['SECONDS', 'HOURS', 'DAYS']
+MIN_RUN_TIME = 300 # min five minutes between runs
 
 class Config_Timing():
     """
@@ -36,13 +38,17 @@ class Config_Timing():
         self.entry = tk.Entry(
                 self.frame, textvariable=self.value, width=10)
         self.entry.grid(row=1, column=0, sticky=tk.W)
+        Tooltip(self.entry, \
+            'If Backgrounder is run before this amount of time has elapsed, '
+            'it will not download an image. Helpful if you want to avoid '
+            'downloading too many images. Minimum time: %d seconds.' \
+            % MIN_RUN_TIME)
 
         self.dropdown = tk.OptionMenu(self.frame, self.choice, *CHOICES)
         self.dropdown.grid(row=1, column=1, sticky=tk.W)
 
     def convert(self, dict):
         """Converts user timing pref dict into an int amount of seconds"""
-        MIN_RUN_TIME = 300 # min five minutes between runs
         
         try:
             int(dict['value'])
