@@ -62,7 +62,7 @@ greenlet==0.4.15
 h5py==2.8.0
 heapdict==1.0.0
 html5lib==1.0.1
-idna==2.8
+idna==2.7
 imageio==2.4.1
 imagesize==1.1.0
 importlib-metadata==0.6
@@ -165,12 +165,12 @@ PyWavelets==1.0.1
 pywin32==224
 pywin32-ctypes==0.2.0
 pywinpty==0.5.5
-PyYAML==3.13
+PyYAML==4.2b1
 pyzmq==17.1.2
 QtAwesome==0.5.3
 qtconsole==4.4.3
 QtPy==1.5.2
-requests==2.9.1
+requests==2.20.0
 rope==0.11.0
 ruamel-yaml==0.15.46
 scikit-image==0.14.1
