@@ -123,6 +123,8 @@ def download_image(id, url, dat):
     True -- image was downloaded
     False  -- image was not downloaded
     """
+	# TODO: If download fails, close program gracefully and log stack traces
+	
     with open(id, 'wb') as handle:
         response = requests.get(url, stream=True)
 
