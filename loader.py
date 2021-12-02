@@ -178,7 +178,7 @@ def read_config_file():
         
     return configdata
     
-def install(DEBUG):
+def install():
     """Runs installation procedures."""
     dat = Data()
     GUI = config_gui.Config_GUI()
@@ -192,10 +192,7 @@ def install(DEBUG):
         return None
     
     # TODO: Move to install dir, need a better way though
-    # if DEBUG:
-    #     copy_to_install_dir(dat)
-    # else:
-    #     move_to_install_dir(dat)
+    # move_to_install_dir(dat)
     
     write_config_file(dat.configdata)
     
@@ -206,7 +203,7 @@ def install(DEBUG):
     
     return dat
 
-def read_data(DEBUG):
+def read_data():
     """
     Reads and returns save data. If no save data exists, runs and returns the
     result of the installation procedure.
@@ -230,7 +227,7 @@ def read_data(DEBUG):
                 write_config_file(dat.configdata)
             return dat
     else:
-        return install(DEBUG)
+        return install()
 
 def write_data(dat):
     """Writes save data to disk. Overwrites any existing data."""

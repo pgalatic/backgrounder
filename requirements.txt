@@ -1,0 +1,6 @@
+requests==2.23.0
+pywin32==225
+Pillow==7.2.0
+praw==7.1.0
+numpy==1.21.4
+servicemanager==1.8.3

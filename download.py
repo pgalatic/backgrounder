@@ -4,10 +4,13 @@
 #
 
 import os
+import pdb
 import random
 import logging
 import datetime
 import requests
+import numpy as np
+import PIL
 from PIL import Image
 from reddit import Reddit
 from PIL import ImageChops
@@ -29,6 +32,27 @@ def get_logger():
     logger.addHandler(fh)
 
     return logger
+
+# https://stackoverflow.com/questions/9166400/convert-rgba-png-to-rgb-with-pil
+def rgba_to_rgb(image, color=(255, 255, 255)):
+    """Alpha composite an RGBA Image with a specified color.
+
+    Simpler, faster version than the solutions above.
+
+    Source: http://stackoverflow.com/a/9459208/284318
+
+    Keyword Arguments:
+    image -- PIL RGBA Image object
+    color -- Tuple r, g, b (default 255, 255, 255)
+
+    """
+    image.load()  # needed for split()
+    background = Image.new('RGB', image.size, color)
+    try:
+        background.paste(image, mask=image.split()[3])  # 3 is the alpha channel
+        return background
+    except IndexError:
+        return image
     
 def is_image(image_path):
     """
@@ -57,7 +81,7 @@ def is_duplicate(image_path, filepath):
     """
     BLOCKSIZE = 65536
     
-    im1 = Image.open(image_path)
+    im1 = rgba_to_rgb(Image.open(image_path))
     
     for filename in os.listdir(filepath):
         if filename.endswith('.png') or filename.endswith('.jpg'):
@@ -66,14 +90,21 @@ def is_duplicate(image_path, filepath):
                 # don't compare the image to itself
                 continue
             
-            im2 = Image.open(full_path)
-            
             try:
-                diff = ImageChops.difference(im1, im2).getbbox()
-                if not diff:
-                    # boundary box doesn't exist -- images are identical
-                    return True
+                im2 = rgba_to_rgb(Image.open(full_path)) # TODO: Fix uncaught error if image can't be opened
+                diff = ImageChops.difference(im1, im2)
                 
+                bbox = diff.getbbox()
+                if not bbox:
+                    if diff.mode == 'RGBA':
+                        # The boundary box doesn't exist but the images have absolutely no overlap
+                        return False
+                    # boundary box doesn't exist and the images are identical
+                    print(f'Same images:\n\t{image_path}\n\t{full_path}')
+                    return True
+            except PIL.UnidentifiedImageError:
+                # image could not be opened (is likely an empty file)
+                continue
             except ValueError:
                 # images aren't of the same dimension
                 continue
@@ -126,6 +157,7 @@ def download_image(id, url, dat):
     with open(id, 'wb') as handle:
         response = requests.get(url, stream=True)
 
+        # TODO: Add graceful handling of response errors
         if not response.ok:
             print(response)
             raise Exception(
